@@ -73,26 +73,42 @@ export default function ProfissionalDemandasScreen() {
       supabase.from('demanda_recusas').select('demanda_id').eq('profissional_id', user.id),
       supabase
         .from('solicitacoes')
-        .select('demanda_origem_id')
+        .select('demanda_origem_id, proposta_origem_id, status')
         .eq('profissional_id', user.id)
         .not('demanda_origem_id', 'is', null),
       supabase
         .from('propostas')
-        .select('demanda_id, status')
+        .select('id, demanda_id, status')
         .eq('profissional_id', user.id),
       supabase.from('profiles').select('plano').eq('id', user.id).maybeSingle(),
     ])
 
     setPlano((perfilRes.data?.plano as string) || 'free')
 
-    const propostasMinhas = (propostasRes.data as { demanda_id: string; status: string }[] | null) || []
+    type AceitaRow = { demanda_origem_id: string; proposta_origem_id: string | null; status: string }
+    const aceitasMinhas = (aceitasRes.data as AceitaRow[] | null) || []
+    const propostasComAtendimentoAtivo = new Set(
+      aceitasMinhas
+        .filter((a) => a.status === 'aceita' || a.status === 'em_andamento')
+        .map((a) => a.proposta_origem_id)
+        .filter((id): id is string => !!id),
+    )
+
+    const propostasMinhas =
+      (propostasRes.data as { id: string; demanda_id: string; status: string }[] | null) || []
     const propostasIds = new Set(propostasMinhas.map((p) => p.demanda_id))
-    const ativas = propostasMinhas.filter((p) => p.status === 'pendente' || p.status === 'aceita').length
+    // Ativa = aguardando resposta do cliente OU aceita com atendimento ainda em curso.
+    // Propostas aceitas cujo atendimento foi cancelado/concluido nao contam mais.
+    const ativas = propostasMinhas.filter((p) => {
+      if (p.status === 'pendente') return true
+      if (p.status === 'aceita') return propostasComAtendimentoAtivo.has(p.id)
+      return false
+    }).length
     setPropostasAtivas(ativas)
 
     const idsExcluidos = new Set<string>([
       ...(recusasRes.data?.map((r: { demanda_id: string }) => r.demanda_id) || []),
-      ...(aceitasRes.data?.map((a: { demanda_origem_id: string }) => a.demanda_origem_id) || []),
+      ...aceitasMinhas.map((a) => a.demanda_origem_id),
       ...propostasIds,
     ])
 
