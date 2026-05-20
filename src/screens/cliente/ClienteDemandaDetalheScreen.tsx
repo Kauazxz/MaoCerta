@@ -63,6 +63,13 @@ export default function ClienteDemandaDetalheScreen({ id }: { id: string }) {
   const [acaoEmCurso, setAcaoEmCurso] = useState<string | null>(null)
   const [aviso, setAviso] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null)
   const [perfilAberto, setPerfilAberto] = useState<string | null>(null)
+  const [propostaParaEscolher, setPropostaParaEscolher] = useState<Proposta | null>(null)
+  const [editando, setEditando] = useState(false)
+  const [tituloEdit, setTituloEdit] = useState('')
+  const [descricaoEdit, setDescricaoEdit] = useState('')
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false)
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
+  const [excluindo, setExcluindo] = useState(false)
 
   const limites = useMemo(() => obterLimitesPlano(plano), [plano])
   const propostasVisiveis = useMemo(
@@ -116,8 +123,13 @@ export default function ClienteDemandaDetalheScreen({ id }: { id: string }) {
     setCarregando(false)
   }
 
-  async function escolherProposta(proposta: Proposta) {
-    if (!demanda) return
+  function abrirConfirmacaoEscolha(proposta: Proposta) {
+    setPropostaParaEscolher(proposta)
+  }
+
+  async function confirmarEscolhaProposta() {
+    const proposta = propostaParaEscolher
+    if (!proposta || !demanda) return
 
     setAcaoEmCurso(proposta.id)
     setAviso(null)
@@ -131,15 +143,11 @@ export default function ClienteDemandaDetalheScreen({ id }: { id: string }) {
       .in('status', ['aceita', 'em_andamento'])
     if ((count ?? 0) >= limites.maxServicosSimultaneosCliente) {
       setAcaoEmCurso(null)
+      setPropostaParaEscolher(null)
       setAviso({
         tipo: 'erro',
         texto: `Você já tem ${count} serviço(s) ativo(s). Limite do plano ${nomePlano(plano)}: ${limites.maxServicosSimultaneosCliente}. Conclua algum ou faça upgrade.`,
       })
-      return
-    }
-
-    if (!confirm(`Escolher ${proposta.profissional?.nome || 'este prestador'} por ${formatarValor(Number(proposta.valor_proposto))}?\n\nIsso abre um atendimento e marca as outras propostas como suplentes.`)) {
-      setAcaoEmCurso(null)
       return
     }
 
@@ -159,6 +167,7 @@ export default function ClienteDemandaDetalheScreen({ id }: { id: string }) {
       .single()
     if (erroSol || !solCriada) {
       setAcaoEmCurso(null)
+      setPropostaParaEscolher(null)
       setAviso({ tipo: 'erro', texto: `Falha ao abrir atendimento: ${erroSol?.message || 'sem id'}` })
       return
     }
@@ -177,6 +186,7 @@ export default function ClienteDemandaDetalheScreen({ id }: { id: string }) {
       .eq('id', proposta.id)
 
     setAcaoEmCurso(null)
+    setPropostaParaEscolher(null)
 
     if (erroProp) {
       setAviso({ tipo: 'erro', texto: `Atendimento criado, mas falhou ao marcar proposta: ${erroProp.message}` })
@@ -185,6 +195,56 @@ export default function ClienteDemandaDetalheScreen({ id }: { id: string }) {
 
     setAviso({ tipo: 'ok', texto: 'Prestador escolhido. Indo para o chat...' })
     setTimeout(() => router.push('/cliente/atendimentos'), 1000)
+  }
+
+  function abrirEdicao() {
+    if (!demanda) return
+    setTituloEdit(demanda.titulo)
+    setDescricaoEdit(demanda.descricao)
+    setEditando(true)
+  }
+
+  async function salvarEdicao() {
+    if (!demanda) return
+    const titulo = tituloEdit.trim()
+    const descricao = descricaoEdit.trim()
+    if (!titulo || !descricao) {
+      setAviso({ tipo: 'erro', texto: 'Título e descrição não podem ficar vazios.' })
+      return
+    }
+    setSalvandoEdicao(true)
+    setAviso(null)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('demandas')
+      .update({ titulo, descricao })
+      .eq('id', demanda.id)
+    setSalvandoEdicao(false)
+    if (error) {
+      setAviso({ tipo: 'erro', texto: `Não foi possível salvar: ${error.message}` })
+      return
+    }
+    setDemanda({ ...demanda, titulo, descricao })
+    setEditando(false)
+    setAviso({ tipo: 'ok', texto: 'Demanda atualizada.' })
+  }
+
+  async function excluirDemanda() {
+    if (!demanda) return
+    setExcluindo(true)
+    setAviso(null)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('demandas')
+      .delete()
+      .eq('id', demanda.id)
+    setExcluindo(false)
+    if (error) {
+      setConfirmandoExclusao(false)
+      setAviso({ tipo: 'erro', texto: `Não foi possível excluir: ${error.message}` })
+      return
+    }
+    router.push('/cliente/demandas')
   }
 
   const cat = demanda?.categorias?.nome || 'Categoria'
@@ -230,8 +290,73 @@ export default function ClienteDemandaDetalheScreen({ id }: { id: string }) {
         {!carregando && demanda && (
           <>
             <section className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-md p-5 space-y-2">
-              <p className="text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Descrição</p>
-              <p className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{demanda.descricao}</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Descrição</p>
+                {!propostaAceita && demanda.status === 'aberta' && !editando && (
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={abrirEdicao}
+                      className="text-[11px] font-semibold text-purple-700 dark:text-purple-300 hover:text-purple-900 dark:hover:text-purple-200"
+                    >
+                      Editar
+                    </button>
+                    <span className="text-gray-300 dark:text-slate-600">|</span>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmandoExclusao(true)}
+                      className="text-[11px] font-semibold text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {!editando && (
+                <p className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{demanda.descricao}</p>
+              )}
+
+              {editando && (
+                <div className="space-y-2">
+                  <label className="block">
+                    <span className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Título</span>
+                    <input
+                      value={tituloEdit}
+                      onChange={(e) => setTituloEdit(e.target.value)}
+                      className="mt-1 w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/30"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Descrição</span>
+                    <textarea
+                      rows={4}
+                      value={descricaoEdit}
+                      onChange={(e) => setDescricaoEdit(e.target.value)}
+                      className="mt-1 w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/30 resize-none"
+                    />
+                  </label>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={salvarEdicao}
+                      disabled={salvandoEdicao}
+                      className="flex-1 bg-purple-700 hover:bg-purple-800 text-white font-semibold py-2 rounded-xl text-sm disabled:opacity-50"
+                    >
+                      {salvandoEdicao ? 'Salvando...' : 'Salvar'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditando(false)}
+                      disabled={salvandoEdicao}
+                      className="px-4 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 font-semibold rounded-xl text-sm hover:bg-gray-50 dark:hover:bg-slate-700"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <p className="text-[11px] text-gray-400 dark:text-slate-500 pt-2 border-t border-gray-100 dark:border-slate-800">
                 Aberta em {formatarDataPt(demanda.created_at)} · status:{' '}
                 <span className="font-semibold text-gray-600 dark:text-slate-400">{demanda.status.replace(/_/g, ' ')}</span>
@@ -342,7 +467,7 @@ export default function ClienteDemandaDetalheScreen({ id }: { id: string }) {
                     {podeEscolher && (
                       <button
                         type="button"
-                        onClick={() => escolherProposta(p)}
+                        onClick={() => abrirConfirmacaoEscolha(p)}
                         disabled={acao}
                         className="w-full bg-purple-700 text-white font-semibold py-2.5 rounded-xl text-sm hover:bg-purple-800 disabled:opacity-50"
                       >
@@ -373,6 +498,95 @@ export default function ClienteDemandaDetalheScreen({ id }: { id: string }) {
         onFechar={() => setPerfilAberto(null)}
         rotulo="Prestador"
       />
+
+      {propostaParaEscolher && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+          onClick={() => acaoEmCurso || setPropostaParaEscolher(null)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 pt-5 pb-3">
+              <p className="text-[11px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-widest">Confirmar escolha</p>
+              <h3 className="text-base font-bold text-gray-900 dark:text-slate-100 mt-1">
+                Escolher {propostaParaEscolher.profissional?.nome || 'este prestador'}?
+              </h3>
+            </div>
+            <div className="px-5 pb-4 space-y-2">
+              <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-purple-900/40 rounded-xl px-3 py-2">
+                <p className="text-[10px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider">Valor combinado</p>
+                <p className="text-lg font-bold text-purple-900 dark:text-purple-100">
+                  {formatarValor(Number(propostaParaEscolher.valor_proposto))}
+                </p>
+                <p className="text-[11px] text-purple-800 dark:text-purple-300 mt-0.5">Prazo: {propostaParaEscolher.prazo}</p>
+              </div>
+              <p className="text-xs text-gray-600 dark:text-slate-400 leading-relaxed">
+                Isso abre um atendimento agora e marca as demais propostas como suplentes. Os outros prestadores não conseguem mais ser escolhidos nessa demanda.
+              </p>
+            </div>
+            <div className="flex gap-2 px-5 pb-5">
+              <button
+                type="button"
+                onClick={() => setPropostaParaEscolher(null)}
+                disabled={!!acaoEmCurso}
+                className="flex-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 font-semibold py-2.5 rounded-xl text-sm hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmarEscolhaProposta}
+                disabled={!!acaoEmCurso}
+                className="flex-1 bg-purple-700 hover:bg-purple-800 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-50"
+              >
+                {acaoEmCurso ? 'Confirmando...' : 'Sim, escolher'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmandoExclusao && demanda && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+          onClick={() => excluindo || setConfirmandoExclusao(false)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 pt-5 pb-3">
+              <p className="text-[11px] font-bold text-red-600 dark:text-red-400 uppercase tracking-widest">Excluir demanda</p>
+              <h3 className="text-base font-bold text-gray-900 dark:text-slate-100 mt-1">
+                Tem certeza?
+              </h3>
+              <p className="text-xs text-gray-600 dark:text-slate-400 leading-relaxed mt-2">
+                Esta ação não pode ser desfeita. A demanda <strong>{demanda.titulo}</strong> e qualquer proposta recebida serão removidas.
+              </p>
+            </div>
+            <div className="flex gap-2 px-5 pb-5">
+              <button
+                type="button"
+                onClick={() => setConfirmandoExclusao(false)}
+                disabled={excluindo}
+                className="flex-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 font-semibold py-2.5 rounded-xl text-sm hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={excluirDemanda}
+                disabled={excluindo}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-50"
+              >
+                {excluindo ? 'Excluindo...' : 'Sim, excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
