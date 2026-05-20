@@ -13,10 +13,15 @@ type Solicitacao = {
   created_at: string
 }
 
+function normalizarStatus(status: string | null | undefined) {
+  return (status || 'pendente').toLowerCase().trim()
+}
+
 function badgeStatus(status: string) {
-  const s = status.toLowerCase()
-  if (s === 'aceita') return { label: 'Aceita', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' }
-  if (s === 'recusada') return { label: 'Recusada', className: 'bg-red-50 text-red-700 border-red-100' }
+  const s = normalizarStatus(status)
+  if (s === 'aceita' || s === 'em_andamento') return { label: 'Aceita', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' }
+  if (s === 'concluida') return { label: 'Concluída', className: 'bg-blue-50 text-blue-700 border-blue-200' }
+  if (s === 'recusada' || s === 'cancelada') return { label: s === 'cancelada' ? 'Cancelada' : 'Recusada', className: 'bg-red-50 text-red-700 border-red-100' }
   return { label: 'Pendente', className: 'bg-amber-50 text-amber-900 border-amber-200' }
 }
 
@@ -51,10 +56,12 @@ export default function ProfissionalSolicitacoesScreen() {
   }, [])
 
   async function atualizarStatus(id: string, status: 'aceita' | 'recusada') {
+    setAviso(null)
     const supabase = createClient()
     const { error } = await supabase.from('solicitacoes').update({ status }).eq('id', id)
     if (error) {
-      setAviso('Falha ao atualizar solicitação.')
+      console.error('[solicitacoes] update falhou:', error)
+      setAviso(`Falha ao atualizar: ${error.message}`)
       return
     }
     setSolicitacoes((atual) => atual.map((item) => (item.id === id ? { ...item, status } : item)))
@@ -83,6 +90,7 @@ export default function ProfissionalSolicitacoesScreen() {
         {!carregando &&
           solicitacoes.map((item) => {
             const badge = badgeStatus(item.status)
+            const statusNorm = normalizarStatus(item.status)
             return (
               <article
                 key={item.id}
@@ -102,7 +110,7 @@ export default function ProfissionalSolicitacoesScreen() {
                   </div>
                   <h2 className="text-base font-bold text-gray-900 dark:text-slate-100 leading-snug">{item.titulo}</h2>
                   <p className="text-sm text-gray-600 dark:text-slate-400 leading-relaxed">{item.descricao}</p>
-                  {item.status === 'pendente' && (
+                  {statusNorm === 'pendente' && (
                     <div className="flex flex-wrap gap-2 pt-1">
                       <button
                         type="button"
