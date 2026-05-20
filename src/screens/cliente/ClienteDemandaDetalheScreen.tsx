@@ -151,25 +151,51 @@ export default function ClienteDemandaDetalheScreen({ id }: { id: string }) {
       return
     }
 
-    // 1) Cria solicitação aceita ligada à demanda + proposta
-    const { data: solCriada, error: erroSol } = await supabase
+    // 1) Cria solicitação aceita ligada à demanda + proposta.
+    // Idempotente: se ja' existe solicitacao para essa demanda (tentativa
+    // anterior que falhou no UPDATE da proposta, por exemplo), reaproveita.
+    const { data: existente } = await supabase
       .from('solicitacoes')
-      .insert({
-        cliente_id: demanda.cliente_id,
-        profissional_id: proposta.profissional_id,
-        titulo: demanda.titulo,
-        descricao: demanda.descricao,
-        status: 'aceita',
-        demanda_origem_id: demanda.id,
-        proposta_origem_id: proposta.id,
-      })
-      .select('id')
-      .single()
-    if (erroSol || !solCriada) {
-      setAcaoEmCurso(null)
-      setPropostaParaEscolher(null)
-      setAviso({ tipo: 'erro', texto: `Falha ao abrir atendimento: ${erroSol?.message || 'sem id'}` })
-      return
+      .select('id, status')
+      .eq('demanda_origem_id', demanda.id)
+      .maybeSingle()
+
+    let solId: string
+    if (existente?.id) {
+      solId = existente.id as string
+      // Se estiver cancelada/recusada, reativa com a proposta atual
+      const statusAtual = (existente.status as string | undefined) || ''
+      if (statusAtual === 'cancelada' || statusAtual === 'recusada') {
+        await supabase
+          .from('solicitacoes')
+          .update({
+            status: 'aceita',
+            profissional_id: proposta.profissional_id,
+            proposta_origem_id: proposta.id,
+          })
+          .eq('id', solId)
+      }
+    } else {
+      const { data: solCriada, error: erroSol } = await supabase
+        .from('solicitacoes')
+        .insert({
+          cliente_id: demanda.cliente_id,
+          profissional_id: proposta.profissional_id,
+          titulo: demanda.titulo,
+          descricao: demanda.descricao,
+          status: 'aceita',
+          demanda_origem_id: demanda.id,
+          proposta_origem_id: proposta.id,
+        })
+        .select('id')
+        .single()
+      if (erroSol || !solCriada) {
+        setAcaoEmCurso(null)
+        setPropostaParaEscolher(null)
+        setAviso({ tipo: 'erro', texto: `Falha ao abrir atendimento: ${erroSol?.message || 'sem id'}` })
+        return
+      }
+      solId = solCriada.id as string
     }
 
     // 1b) Copia o valor da proposta pro atendimento — dispara a divisão entre etapas.
@@ -177,7 +203,7 @@ export default function ClienteDemandaDetalheScreen({ id }: { id: string }) {
     await supabase
       .from('solicitacoes')
       .update({ valor_total_servico: Number(proposta.valor_proposto) })
-      .eq('id', solCriada.id)
+      .eq('id', solId)
 
     // 2) Marca proposta como aceita (trigger faz as outras virarem suplente)
     const { error: erroProp } = await supabase
