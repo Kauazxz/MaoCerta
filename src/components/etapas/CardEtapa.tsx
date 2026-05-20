@@ -27,7 +27,9 @@ const statusBadges: Record<Etapa['status'], { label: string; bg: string; text: s
   pendente: { label: '⏳ Pendente', bg: 'bg-gray-50 dark:bg-slate-800', text: 'text-gray-700 dark:text-slate-300' },
   agendada: { label: '📅 Agendada', bg: 'bg-blue-50', text: 'text-blue-700' },
   em_progresso: { label: '⚙️ Em Progresso', bg: 'bg-amber-50', text: 'text-amber-700' },
+  finalizada_prestador: { label: '⌛ Aguardando cliente', bg: 'bg-purple-50', text: 'text-purple-800' },
   concluida: { label: '✅ Concluída', bg: 'bg-emerald-50', text: 'text-emerald-700' },
+  contestada: { label: '⚠️ Contestada', bg: 'bg-red-50', text: 'text-red-700' },
   cancelada: { label: '❌ Cancelada', bg: 'bg-red-50', text: 'text-red-700' }
 }
 

@@ -9,7 +9,9 @@ import { formatarDataPt } from '@/lib/formatar-data'
 import ChatAtendimento from '@/screens/atendimento/ChatAtendimento'
 import AbasAtendimento from '@/components/acordos/AbasAtendimento'
 import PerfilModal from '@/screens/perfil/PerfilModal'
-import GerenciadorEtapas from '@/components/etapas/GerenciadorEtapas'
+import EtapaAtualCard from '@/components/atendimento/EtapaAtualCard'
+import TimelineEtapas from '@/components/atendimento/TimelineEtapas'
+import type { Etapa } from '@/types'
 import ValorServicoCard from '@/components/financeiro/ValorServicoCard'
 import AvaliarClienteCard from '@/components/financeiro/AvaliarClienteCard'
 import AtendimentoContextoSidebar from '@/components/atendimento/AtendimentoContextoSidebar'
@@ -38,6 +40,7 @@ export default function ProfissionalAtendimentoDetalheScreen({ id }: { id: strin
   const [confirmandoCancelamento, setConfirmandoCancelamento] = useState(false)
   const [verPerfilCliente, setVerPerfilCliente] = useState(false)
   const [financeSignal, setFinanceSignal] = useState(0)
+  const [etapas, setEtapas] = useState<Etapa[]>([])
 
   useEffect(() => {
     carregar()
@@ -72,6 +75,12 @@ export default function ProfissionalAtendimentoDetalheScreen({ id }: { id: strin
       setErro('Atendimento não encontrado.')
     } else {
       setAtendimento(data as unknown as Atendimento)
+      try {
+        const es = await prestadorService.getEtapasAtendimento(id)
+        setEtapas(es)
+      } catch (e) {
+        console.error('[atendimento] etapas fetch', e)
+      }
     }
     setCarregando(false)
   }
@@ -194,7 +203,7 @@ export default function ProfissionalAtendimentoDetalheScreen({ id }: { id: strin
         </div>
       </header>
 
-      <div className="flex-1 w-full max-w-6xl mx-auto px-4 grid lg:grid-cols-[minmax(0,28rem)_288px] gap-6 pb-8 items-start">
+      <div className="flex-1 w-full max-w-7xl mx-auto px-4 grid lg:grid-cols-[minmax(0,1fr)_320px] gap-6 pb-8 items-start">
         <div className="w-full min-w-0">
       <section className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 px-4 py-4">
         <div className="w-full space-y-2">
@@ -290,18 +299,12 @@ export default function ProfissionalAtendimentoDetalheScreen({ id }: { id: strin
         </div>
       </section>
 
-      {/* Seção de Etapas */}
-      <section className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 px-4 py-4">
-        <div className="w-full space-y-3">
-          <p className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide">📋 Etapas do Atendimento</p>
-          <GerenciadorEtapas
-            solicitacaoId={atendimento.id}
-            meuId={meuId}
-            meuTipo="profissional"
-            solicitacaoStatus={atendimento.status}
-            financeSignal={financeSignal}
-          />
-        </div>
+      <section className="px-4 py-3 border-b border-gray-100 dark:border-slate-800">
+        <EtapaAtualCard
+          etapa={etapas.find(e => e.status !== 'concluida' && e.status !== 'cancelada') ?? etapas[etapas.length - 1] ?? null}
+          meuPapel="profissional"
+          onAlterado={() => void carregar()}
+        />
       </section>
 
       {atendimento.status === 'concluida' && cliente && (
@@ -320,6 +323,15 @@ export default function ProfissionalAtendimentoDetalheScreen({ id }: { id: strin
         meuId={meuId}
         meuPapel="profissional"
         conversa={<ChatAtendimento solicitacaoId={atendimento.id} meuId={meuId} podeEnviar={ativo} />}
+        fluxo={
+          <TimelineEtapas
+            solicitacaoId={atendimento.id}
+            meuId={meuId}
+            meuTipo="profissional"
+            solicitacaoStatus={atendimento.status}
+            financeSignal={financeSignal}
+          />
+        }
       />
         </div>
 

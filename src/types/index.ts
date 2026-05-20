@@ -41,7 +41,14 @@ export interface Acordo {
 
 // RF30-RF38: Etapas de Atendimento
 export type TipoEtapa = "vistoria" | "orcamento" | "execucao";
-export type StatusEtapa = "pendente" | "agendada" | "em_progresso" | "concluida" | "cancelada";
+export type StatusEtapa =
+  | "pendente"
+  | "agendada"
+  | "em_progresso"
+  | "finalizada_prestador"
+  | "concluida"
+  | "contestada"
+  | "cancelada";
 export type StatusAgendamento = "proposto_prestador" | "proposto_cliente" | "aceito_ambos" | "rejeitado" | "cancelado";
 
 export interface EtapaTipo {

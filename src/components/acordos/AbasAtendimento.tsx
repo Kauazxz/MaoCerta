@@ -6,7 +6,7 @@ import { detectarIntencao } from '@/lib/acordos/detector'
 import { acordosService } from '@/lib/supabase/acordos'
 import PainelAcordos from './PainelAcordos'
 
-type Aba = 'conversa' | 'acordos' | 'historico'
+type Aba = 'conversa' | 'acordos' | 'historico' | 'fluxo'
 type Toast = { id: string; tipo: 'novo' | 'contraproposta' | 'aceite' | 'recusa'; mensagem: string }
 
 type Props = {
@@ -14,6 +14,9 @@ type Props = {
   meuId: string
   meuPapel: 'cliente' | 'profissional'
   conversa: ReactNode
+  fluxo?: ReactNode
+  /** Quando true, abre a aba Fluxo na montagem (usado pelo "Ver fluxo" do EtapaAtualCard) */
+  abaInicial?: Aba
 }
 
 const DEBUG = true
@@ -21,8 +24,8 @@ function log(...args: unknown[]) {
   if (DEBUG) console.log('[acordos]', ...args)
 }
 
-export default function AbasAtendimento({ solicitacaoId, meuId, meuPapel, conversa }: Props) {
-  const [aba, setAba] = useState<Aba>('conversa')
+export default function AbasAtendimento({ solicitacaoId, meuId, meuPapel, conversa, fluxo, abaInicial }: Props) {
+  const [aba, setAba] = useState<Aba>(abaInicial ?? 'conversa')
   const [contadores, setContadores] = useState({ ativos: 0, historico: 0 })
   const [trigger, setTrigger] = useState(0)
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -199,6 +202,11 @@ export default function AbasAtendimento({ solicitacaoId, meuId, meuPapel, conver
           <BotaoAba ativo={aba === 'historico'} onClick={() => setAba('historico')} contador={contadores.historico}>
             📜 Histórico
           </BotaoAba>
+          {fluxo && (
+            <BotaoAba ativo={aba === 'fluxo'} onClick={() => setAba('fluxo')}>
+              📋 Fluxo
+            </BotaoAba>
+          )}
         </nav>
 
         <div className="min-h-[300px]">
@@ -221,6 +229,7 @@ export default function AbasAtendimento({ solicitacaoId, meuId, meuPapel, conver
               modo="historico"
             />
           )}
+          {aba === 'fluxo' && fluxo}
         </div>
       </section>
 
