@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { iconeCategoria } from '@/lib/categorias-ui'
 
 type Perfil = {
   id: string
@@ -45,6 +46,7 @@ export default function PerfilModal({ perfilId, aberto, onFechar, rotulo = 'Perf
   const [demandasFeitas, setDemandasFeitas] = useState(0)
   const [denuncias, setDenuncias] = useState(0)
   const [bloqueado, setBloqueado] = useState(false)
+  const [categoriasPrest, setCategoriasPrest] = useState<{ id: number; nome: string }[]>([])
 
   // ações
   const [meuId, setMeuId] = useState<string | null>(null)
@@ -67,6 +69,7 @@ export default function PerfilModal({ perfilId, aberto, onFechar, rotulo = 'Perf
     setDemandasFeitas(0)
     setDenuncias(0)
     setBloqueado(false)
+    setCategoriasPrest([])
     setAviso(null)
     setDenunciaAberta(false)
 
@@ -75,7 +78,7 @@ export default function PerfilModal({ perfilId, aberto, onFechar, rotulo = 'Perf
       const { data: auth } = await supabase.auth.getUser()
       if (!cancelado) setMeuId(auth.user?.id || null)
 
-      const [perfilRes, avalRes, atendRes, denRes, blocRes] = await Promise.all([
+      const [perfilRes, avalRes, atendRes, denRes, blocRes, catRes] = await Promise.all([
         supabase
           .from('profiles')
           .select('id, nome, tipo, cidade, estado, bio, avatar_url, created_at, experiencia_anos, historico_profissional')
@@ -102,6 +105,10 @@ export default function PerfilModal({ perfilId, aberto, onFechar, rotulo = 'Perf
               .eq('bloqueado_id', perfilId)
               .maybeSingle()
           : Promise.resolve({ data: null }),
+        supabase
+          .from('profissional_categorias')
+          .select('categoria:categoria_id ( id, nome )')
+          .eq('profissional_id', perfilId),
       ])
 
       if (cancelado) return
@@ -123,6 +130,12 @@ export default function PerfilModal({ perfilId, aberto, onFechar, rotulo = 'Perf
       setDemandasFeitas(atendRes.count ?? 0)
       setDenuncias(denRes.count ?? 0)
       setBloqueado(!!blocRes.data)
+
+      const cats = ((catRes.data as { categoria: { id: number; nome: string } | null }[] | null) || [])
+        .map((c) => c.categoria)
+        .filter((c): c is { id: number; nome: string } => !!c)
+      setCategoriasPrest(cats)
+
       setCarregando(false)
     }
 
@@ -278,6 +291,26 @@ export default function PerfilModal({ perfilId, aberto, onFechar, rotulo = 'Perf
                 cor={denuncias === 0 ? 'text-gray-500 dark:text-slate-400' : 'text-red-600'}
               />
             </section>
+
+            {/* Categorias em que atua (apenas prestador) */}
+            {ehProfissional && categoriasPrest.length > 0 && (
+              <section className="space-y-2">
+                <p className="text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
+                  Atua em
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {categoriasPrest.map((c) => (
+                    <span
+                      key={c.id}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-purple-800 dark:text-purple-200 bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-purple-900/40 rounded-full px-2.5 py-1"
+                    >
+                      <span aria-hidden>{iconeCategoria(c.nome)}</span>
+                      {c.nome}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Currículo / Bio */}
             {(perfil.bio || perfil.experiencia_anos != null || perfil.historico_profissional) && (
