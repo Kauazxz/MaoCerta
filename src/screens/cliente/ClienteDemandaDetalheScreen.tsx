@@ -277,7 +277,8 @@ export default function ClienteDemandaDetalheScreen({ id }: { id: string }) {
       setConfirmandoExclusao(false)
       setAviso({
         tipo: 'erro',
-        texto: 'A exclusão foi bloqueada pelas regras do banco. Aplique a migration 033 ou contate o suporte.',
+        texto:
+          'Exclusão bloqueada. Verifique se a demanda ainda tem proposta marcada como aceita — se o atendimento foi cancelado, é preciso aplicar a migration 034 para destravá-la.',
       })
       return
     }
