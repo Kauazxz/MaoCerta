@@ -45,6 +45,7 @@ export default function EtapaAtualCard({ etapa, meuPapel, onAlterado, onAbrirFlu
   const tipoInfo = TIPOS_LABEL[etapa.tipo] || { titulo: etapa.tipo, icone: '📋' }
   const statusInfo = STATUS_LABEL[etapa.status] || { texto: etapa.status, cor: 'bg-gray-100 text-gray-700' }
   const valor = Number(etapa.valor_acordado || 0)
+  const ehCobravel = etapa.cobravel === true && valor > 0
 
   async function executar(fn: () => Promise<{ ok: boolean; erro?: string }>, nome: string) {
     setAcao(nome)
@@ -78,11 +79,15 @@ export default function EtapaAtualCard({ etapa, meuPapel, onAlterado, onAbrirFlu
       </div>
 
       <div className="p-4 space-y-3">
-        {valor > 0 && (
+        {ehCobravel ? (
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600 dark:text-slate-400">Valor da etapa</span>
             <span className="font-bold text-gray-900 dark:text-slate-100">{formatarValorBrl(valor)}</span>
           </div>
+        ) : (
+          <p className="text-[11px] text-gray-500 dark:text-slate-400 italic">
+            Etapa sem cobrança — não gera Pix.
+          </p>
         )}
 
         {etapa.notas_conclusao && etapa.status === 'finalizada_prestador' && (
@@ -119,7 +124,7 @@ export default function EtapaAtualCard({ etapa, meuPapel, onAlterado, onAbrirFlu
         {podeAceitar && !contestando && (
           <div className="space-y-2">
             <p className="text-xs text-gray-600 dark:text-slate-400 leading-relaxed">
-              O prestador marcou esta etapa como finalizada. Você pode aceitar a conclusão{valor > 0 ? ' e gerar o Pix de pagamento' : ''}, ou contestar se algo está errado.
+              O prestador marcou esta etapa como finalizada. Você pode aceitar a conclusão{ehCobravel ? ' e gerar o Pix de pagamento' : ''}, ou contestar se algo está errado.
             </p>
             <button
               type="button"
@@ -127,7 +132,7 @@ export default function EtapaAtualCard({ etapa, meuPapel, onAlterado, onAbrirFlu
               disabled={acao !== null}
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-50"
             >
-              {acao === 'aceitar' ? 'Aceitando...' : `✓ Aceitar conclusão${valor > 0 ? ' e pagar' : ''}`}
+              {acao === 'aceitar' ? 'Aceitando...' : `✓ Aceitar conclusão${ehCobravel ? ' e pagar' : ''}`}
             </button>
             <button
               type="button"

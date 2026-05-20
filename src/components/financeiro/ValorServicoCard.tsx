@@ -58,7 +58,7 @@ export default function ValorServicoCard({
         setMsg({ tipo: 'erro', t: 'Não foi possível salvar o valor.' })
         return
       }
-      setMsg({ tipo: 'ok', t: 'Valor salvo e dividido nas etapas (vistoria, orçamento e execução).' })
+      setMsg({ tipo: 'ok', t: 'Valor de referência salvo. Cada etapa cobrável é cobrada conforme o que foi acordado no chat.' })
       onSalvo()
     } catch (err) {
       console.error(err)
@@ -69,7 +69,6 @@ export default function ValorServicoCard({
   }
 
   const num = valorAtual != null ? Number(valorAtual) : null
-  const parte = num != null && !Number.isNaN(num) ? num / 3 : null
 
   return (
     <section
@@ -79,19 +78,16 @@ export default function ValorServicoCard({
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">Financeiro</p>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 mt-0.5">Valor total do serviço</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 mt-0.5">Valor de referência do serviço</h2>
             <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 max-w-md leading-relaxed">
-              O valor é dividido em <strong>três partes iguais</strong> (uma por etapa). O cliente paga cada etapa via{' '}
-              <strong>Pix pela plataforma</strong> — sem transferência direta ao prestador (RN18).
+              Estimativa global do atendimento. <strong>Cada etapa é cobrada conforme o que foi acordado no chat</strong> —
+              não há rateio automático. Cobranças saem apenas de etapas marcadas como cobráveis.
             </p>
           </div>
           {num != null && num > 0 && (
             <div className="shrink-0 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-800 px-4 py-3 text-right min-w-[140px]">
-              <p className="text-[10px] text-gray-500 dark:text-slate-400 uppercase font-semibold">Total acordado</p>
+              <p className="text-[10px] text-gray-500 dark:text-slate-400 uppercase font-semibold">Referência</p>
               <p className="text-xl font-extrabold text-gray-900 dark:text-slate-100">{formatarValorBrl(num)}</p>
-              {parte != null && (
-                <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1">~{formatarValorBrl(Math.round(parte * 100) / 100)} / etapa</p>
-              )}
             </div>
           )}
         </div>
@@ -117,7 +113,7 @@ export default function ValorServicoCard({
               disabled={salvando}
               className={`w-full rounded-xl py-3 text-sm font-bold text-white shadow-md transition focus-visible:outline focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 ${btn}`}
             >
-              {salvando ? 'Salvando…' : 'Salvar e distribuir nas etapas'}
+              {salvando ? 'Salvando…' : 'Salvar valor de referência'}
             </button>
           </form>
         ) : (

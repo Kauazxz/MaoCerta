@@ -211,12 +211,16 @@ export default function PagamentoEtapaPanel({
     }
   }
 
+  // Etapa nao cobravel (acordada como gratuita) - nao mostra painel de Pix
+  if (etapa.cobravel !== true) {
+    return null
+  }
+
   if (valorEtapa <= 0) {
     return (
       <div className="rounded-xl border border-dashed border-gray-200 dark:border-slate-700 bg-gray-50/80 px-3 py-2.5">
         <p className="text-[11px] text-gray-500 dark:text-slate-400 leading-snug">
-          Defina o <strong>valor total do serviço</strong> acima para dividir automaticamente nestas etapas e habilitar o
-          Pix.
+          Esta etapa está marcada como cobrável, mas ainda não tem valor definido.
         </p>
       </div>
     )

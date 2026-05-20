@@ -59,6 +59,13 @@ export interface EtapaTipo {
   sequencia: number;
 }
 
+export type MomentoCobranca =
+  | 'nao_se_aplica'
+  | 'antes_da_etapa'
+  | 'apos_conclusao_etapa'
+  | 'somente_no_final'
+  | 'incluido_no_total_final';
+
 export interface Etapa {
   id: string;
   solicitacao_id: string;
@@ -66,6 +73,8 @@ export interface Etapa {
   sequencia: number;
   status: StatusEtapa;
   valor_acordado?: number | null;
+  cobravel: boolean;
+  momento_cobranca: MomentoCobranca;
   data_proposta?: string;
   hora_proposta?: string;
   proposto_por?: string;
@@ -77,6 +86,7 @@ export interface Etapa {
   notas_conclusao?: string;
   data_inicio?: string;
   data_conclusao?: string;
+  observacoes?: string | null;
   created_at: string;
   updated_at: string;
 }
