@@ -135,7 +135,7 @@ export default function ProfissionalAtendimentosScreen() {
               </>
             )
 
-            return ehAndamento ? (
+            return (
               <Link
                 key={item.id}
                 href={`/profissional/atendimentos/${item.id}`}
@@ -143,13 +143,6 @@ export default function ProfissionalAtendimentosScreen() {
               >
                 {conteudo}
               </Link>
-            ) : (
-              <article
-                key={item.id}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-md overflow-hidden"
-              >
-                {conteudo}
-              </article>
             )
           })}
 

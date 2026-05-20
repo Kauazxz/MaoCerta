@@ -49,7 +49,14 @@ export default function ProfissionalSolicitacoesScreen() {
       if (error) {
         setAviso('Não foi possível carregar solicitações. A migration do RF12 pode não ter sido aplicada.')
       }
-      setSolicitacoes((data as Solicitacao[] | null) || [])
+      // Inbox so' mostra pedidos abertos: pendente (aguardando resposta) ou
+      // aceita/em_andamento (recem aceito). Cancelada, recusada e concluida
+      // ja' sairam do fluxo da inbox.
+      const lista = ((data as Solicitacao[] | null) || []).filter((s) => {
+        const st = normalizarStatus(s.status)
+        return st === 'pendente' || st === 'aceita' || st === 'em_andamento'
+      })
+      setSolicitacoes(lista)
       setCarregando(false)
     }
     carregar()
