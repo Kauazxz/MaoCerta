@@ -101,8 +101,13 @@ export default function CardAcordoSugerido({ acordo, meuId, meuPapel, onAlterado
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-lg" aria-hidden>{label.icone}</span>
           <p className="text-xs font-bold text-gray-700 dark:text-slate-200 uppercase tracking-wider truncate">
-            {label.titulo} sugerido
+            {acordo.revisao > 0 ? `${label.titulo} (contraproposta)` : `${label.titulo} sugerido`}
           </p>
+          {acordo.revisao > 0 && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 shrink-0">
+              Revisão {acordo.revisao}
+            </span>
+          )}
         </div>
         <span className="text-[10px] font-bold text-gray-500 dark:text-slate-400 shrink-0">
           {acordo.confianca}% confiança
@@ -242,6 +247,16 @@ export default function CardAcordoSugerido({ acordo, meuId, meuPapel, onAlterado
         {aceiteSeu && !aceiteOutro && (
           <p className="text-[11px] text-gray-500 dark:text-slate-400 italic">
             Você já aceitou. Aguardando o {meuPapel === 'cliente' ? 'prestador' : 'cliente'}.
+          </p>
+        )}
+
+        {acordo.revisao > 0 && (
+          <p className="text-[10px] text-amber-700 dark:text-amber-300">
+            Atualizado em{' '}
+            {new Date(acordo.ultima_alteracao_em).toLocaleString('pt-BR', {
+              day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+            })}
+            . Aceites anteriores foram invalidados — ambos precisam confirmar de novo.
           </p>
         )}
       </div>

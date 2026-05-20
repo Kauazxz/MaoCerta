@@ -31,9 +31,17 @@ export type AcordoSugerido = {
   convertido_em: string | null
   convertido_tipo: 'etapa' | 'agendamento' | 'cancelamento' | null
   confianca: number
+  revisao: number
+  ultima_alteracao_em: string
   created_at: string
   updated_at: string
 }
+
+export type ResultadoSugestao =
+  | { tipo: 'novo'; acordo: AcordoSugerido }
+  | { tipo: 'contraproposta'; acordo: AcordoSugerido; mudancas: string[] }
+  | { tipo: 'duplicado'; acordo: AcordoSugerido }
+  | { tipo: 'erro'; mensagem: string }
 
 export type ConfirmacaoAcordo = {
   id: string
