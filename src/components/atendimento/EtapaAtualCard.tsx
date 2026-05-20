@@ -36,8 +36,16 @@ export default function EtapaAtualCard({ etapa, meuPapel, onAlterado, onAbrirFlu
 
   if (!etapa) {
     return (
-      <div className="rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 text-center">
-        <p className="text-sm text-gray-500 dark:text-slate-400">Sem etapa ativa no momento</p>
+      <div className="rounded-2xl border border-dashed border-purple-200 dark:border-purple-900/60 bg-purple-50/40 dark:bg-purple-950/20 p-5 text-center space-y-2">
+        <p className="text-2xl">💬</p>
+        <p className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+          Aguardando acordos
+        </p>
+        <p className="text-xs text-purple-800 dark:text-purple-200 leading-relaxed max-w-sm mx-auto">
+          {meuPapel === 'profissional'
+            ? 'Combine pelo chat o que e como vai ser executado. Cada acordo aceito vira uma etapa do atendimento.'
+            : 'Combine pelo chat com o prestador. Cada acordo aceito (vistoria, orçamento, execução, agendamento) vira uma etapa aqui.'}
+        </p>
       </div>
     )
   }

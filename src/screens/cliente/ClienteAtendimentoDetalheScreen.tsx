@@ -10,6 +10,7 @@ import AbasAtendimento from '@/components/acordos/AbasAtendimento'
 import PerfilModal from '@/screens/perfil/PerfilModal'
 import EtapaAtualCard from '@/components/atendimento/EtapaAtualCard'
 import TimelineEtapas from '@/components/atendimento/TimelineEtapas'
+import TermoConclusaoCard from '@/components/atendimento/TermoConclusaoCard'
 import { prestadorService } from '@/lib/supabase/prestador'
 import type { Etapa } from '@/types'
 import ValorServicoCard from '@/components/financeiro/ValorServicoCard'
@@ -250,9 +251,23 @@ export default function ClienteAtendimentoDetalheScreen({ id }: { id: string }) 
 
       <section className="px-4 py-3 border-b border-gray-100 dark:border-slate-800">
         <EtapaAtualCard
-          etapa={etapas.find(e => e.status !== 'concluida' && e.status !== 'cancelada') ?? etapas[etapas.length - 1] ?? null}
+          etapa={etapas.find(e => e.status !== 'concluida' && e.status !== 'cancelada') ?? null}
           meuPapel="cliente"
           onAlterado={() => void carregar()}
+        />
+      </section>
+
+      <section className="px-4 py-3 border-b border-gray-100 dark:border-slate-800">
+        <TermoConclusaoCard
+          solicitacaoId={atendimento.id}
+          meuId={meuId}
+          meuPapel="cliente"
+          etapas={etapas}
+          statusAtendimento={atendimento.status}
+          clienteNome="Você (cliente)"
+          prestadorNome={prest?.nome || 'Prestador'}
+          descricaoServico={atendimento.descricao}
+          onConcluido={() => void carregar()}
         />
       </section>
 
