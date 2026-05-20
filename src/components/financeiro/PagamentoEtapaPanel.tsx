@@ -95,7 +95,8 @@ export default function PagamentoEtapaPanel({
       onAlterado()
     } catch (e) {
       console.error(e)
-      setErro('Não foi possível gerar o Pix. Tente de novo.')
+      const msg = (e as Error)?.message || ''
+      setErro(`Não foi possível gerar o Pix. ${msg ? `Motivo: ${msg}` : 'Tente de novo.'}`)
     } finally {
       setProcessando(false)
     }
