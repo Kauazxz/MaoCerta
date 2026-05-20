@@ -47,6 +47,9 @@ export default function PerfilModal({ perfilId, aberto, onFechar, rotulo = 'Perf
   const [denuncias, setDenuncias] = useState(0)
   const [bloqueado, setBloqueado] = useState(false)
   const [categoriasPrest, setCategoriasPrest] = useState<{ id: number; nome: string }[]>([])
+  const [avaliacoesComComentario, setAvaliacoesComComentario] = useState<
+    { id: string; nota: number; comentario: string; created_at: string; avaliador: { nome: string } | null }[]
+  >([])
 
   // ações
   const [meuId, setMeuId] = useState<string | null>(null)
@@ -70,6 +73,7 @@ export default function PerfilModal({ perfilId, aberto, onFechar, rotulo = 'Perf
     setDenuncias(0)
     setBloqueado(false)
     setCategoriasPrest([])
+    setAvaliacoesComComentario([])
     setAviso(null)
     setDenunciaAberta(false)
 
@@ -78,7 +82,7 @@ export default function PerfilModal({ perfilId, aberto, onFechar, rotulo = 'Perf
       const { data: auth } = await supabase.auth.getUser()
       if (!cancelado) setMeuId(auth.user?.id || null)
 
-      const [perfilRes, avalRes, atendRes, denRes, blocRes, catRes] = await Promise.all([
+      const [perfilRes, avalRes, atendRes, denRes, blocRes, catRes, avalComentRes] = await Promise.all([
         supabase
           .from('profiles')
           .select('id, nome, tipo, cidade, estado, bio, avatar_url, created_at, experiencia_anos, historico_profissional')
@@ -109,6 +113,13 @@ export default function PerfilModal({ perfilId, aberto, onFechar, rotulo = 'Perf
           .from('profissional_categorias')
           .select('categoria:categoria_id ( id, nome )')
           .eq('profissional_id', perfilId),
+        supabase
+          .from('avaliacoes')
+          .select('id, nota, comentario, created_at, avaliador:avaliador_id ( nome )')
+          .eq('avaliado_id', perfilId)
+          .not('comentario', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(20),
       ])
 
       if (cancelado) return
@@ -135,6 +146,24 @@ export default function PerfilModal({ perfilId, aberto, onFechar, rotulo = 'Perf
         .map((c) => c.categoria)
         .filter((c): c is { id: number; nome: string } => !!c)
       setCategoriasPrest(cats)
+
+      type AvalComent = {
+        id: string
+        nota: number
+        comentario: string | null
+        created_at: string
+        avaliador: { nome: string } | null
+      }
+      const comComent = ((avalComentRes.data as unknown as AvalComent[] | null) || [])
+        .filter((a) => a.comentario && a.comentario.trim().length > 0)
+        .map((a) => ({
+          id: a.id,
+          nota: a.nota,
+          comentario: a.comentario as string,
+          created_at: a.created_at,
+          avaliador: a.avaliador,
+        }))
+      setAvaliacoesComComentario(comComent)
 
       setCarregando(false)
     }
@@ -338,6 +367,39 @@ export default function PerfilModal({ perfilId, aberto, onFechar, rotulo = 'Perf
                     </p>
                   </div>
                 )}
+              </section>
+            )}
+
+            {/* Avaliações recebidas (RF48 + RF49) */}
+            {avaliacoesComComentario.length > 0 && (
+              <section className="space-y-2">
+                <p className="text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
+                  Avaliações recebidas ({avaliacoesComComentario.length})
+                </p>
+                <ul className="space-y-2">
+                  {avaliacoesComComentario.map((a) => (
+                    <li
+                      key={a.id}
+                      className="rounded-2xl border border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/60 p-3 space-y-1"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-slate-100 truncate">
+                          {a.avaliador?.nome || 'Anônimo'}
+                        </p>
+                        <span className="text-xs font-bold text-amber-600 dark:text-amber-400 shrink-0">
+                          {'★'.repeat(a.nota)}
+                          <span className="text-gray-300 dark:text-slate-600">{'★'.repeat(5 - a.nota)}</span>
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                        {a.comentario}
+                      </p>
+                      <p className="text-[10px] text-gray-400 dark:text-slate-500">
+                        {new Date(a.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
               </section>
             )}
 

@@ -10,6 +10,7 @@ import ChatAtendimento from '@/screens/atendimento/ChatAtendimento'
 import PerfilModal from '@/screens/perfil/PerfilModal'
 import GerenciadorEtapas from '@/components/etapas/GerenciadorEtapas'
 import ValorServicoCard from '@/components/financeiro/ValorServicoCard'
+import AvaliarClienteCard from '@/components/financeiro/AvaliarClienteCard'
 import AtendimentoContextoSidebar from '@/components/atendimento/AtendimentoContextoSidebar'
 
 type Atendimento = {
@@ -301,6 +302,17 @@ export default function ProfissionalAtendimentoDetalheScreen({ id }: { id: strin
           />
         </div>
       </section>
+
+      {atendimento.status === 'concluida' && cliente && (
+        <section className="px-4 py-4 border-b border-gray-100 dark:border-slate-800">
+          <AvaliarClienteCard
+            atendimentoId={atendimento.id}
+            clienteId={atendimento.cliente_id}
+            nomeCliente={cliente.nome || 'Cliente'}
+            statusAtendimento={atendimento.status}
+          />
+        </section>
+      )}
 
       <section className="flex-1 w-full mx-auto bg-white dark:bg-slate-900 border-x border-gray-100 dark:border-slate-800 flex flex-col">
         <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800">
