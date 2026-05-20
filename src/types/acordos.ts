@@ -29,7 +29,7 @@ export type AcordoSugerido = {
   observacoes: string | null
   status: StatusAcordo
   convertido_em: string | null
-  convertido_tipo: 'etapa' | 'agendamento' | 'cancelamento' | null
+  convertido_tipo: 'etapa' | 'agendamento' | 'cancelamento' | 'conclusao' | null
   confianca: number
   revisao: number
   ultima_alteracao_em: string
