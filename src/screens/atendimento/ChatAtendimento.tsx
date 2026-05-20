@@ -19,6 +19,8 @@ type Props = {
   podeEnviar?: boolean
   corOutro?: string
   corMinha?: string
+  /** Callback opcional disparado apos cada mensagem MINHA enviada com sucesso. Usado pela camada de Acordos Assistidos. */
+  onMensagemEnviada?: (msg: { id: string; conteudo: string }) => void
 }
 
 export default function ChatAtendimento({
@@ -27,6 +29,7 @@ export default function ChatAtendimento({
   podeEnviar = true,
   corOutro = 'bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200',
   corMinha = 'bg-emerald-600 text-white',
+  onMensagemEnviada,
 }: Props) {
   const [mensagens, setMensagens] = useState<Mensagem[]>([])
   const [carregando, setCarregando] = useState(true)
@@ -109,7 +112,16 @@ export default function ChatAtendimento({
     }
     setTexto('')
     if (data) {
-      setMensagens((atual) => (atual.some((m) => m.id === (data as Mensagem).id) ? atual : [...atual, data as Mensagem]))
+      const msg = data as Mensagem
+      setMensagens((atual) => (atual.some((m) => m.id === msg.id) ? atual : [...atual, msg]))
+      // Dispara callback pra camadas opcionais (ex: detector de Acordos)
+      if (onMensagemEnviada) {
+        try {
+          onMensagemEnviada({ id: msg.id, conteudo: msg.conteudo })
+        } catch (err) {
+          console.error('[chat] onMensagemEnviada falhou:', err)
+        }
+      }
     }
   }
 

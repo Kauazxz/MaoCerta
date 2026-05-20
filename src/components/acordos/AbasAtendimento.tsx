@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { cloneElement, isValidElement, useEffect, useState, type ReactElement, type ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { detectarIntencao } from '@/lib/acordos/detector'
 import { acordosService } from '@/lib/supabase/acordos'
@@ -12,8 +12,14 @@ type Props = {
   solicitacaoId: string
   meuId: string
   meuPapel: 'cliente' | 'profissional'
-  /** ChatAtendimento renderizado de fora (preservamos o componente original) */
+  /** ChatAtendimento renderizado de fora. Recebe automaticamente onMensagemEnviada injetado. */
   conversa: ReactNode
+}
+
+// Logs temporarios pra validar a Fase 1. Pode remover depois.
+const DEBUG = true
+function log(...args: unknown[]) {
+  if (DEBUG) console.log('[acordos]', ...args)
 }
 
 export default function AbasAtendimento({ solicitacaoId, meuId, meuPapel, conversa }: Props) {
@@ -21,15 +27,52 @@ export default function AbasAtendimento({ solicitacaoId, meuId, meuPapel, conver
   const [contadores, setContadores] = useState({ ativos: 0, historico: 0 })
   const [trigger, setTrigger] = useState(0)
 
+  // Roda o detector e cria a sugestao. Idempotente: nao recria se ja' existe sugestao
+  // ativa para a mesma mensagem.
+  async function detectarECriar(mensagemId: string, conteudo: string) {
+    log('detectarECriar chamado', { mensagemId, conteudo, meuId, solicitacaoId })
+    const intencao = detectarIntencao(conteudo || '')
+    if (!intencao) {
+      log('nenhuma intencao detectada')
+      return
+    }
+    log('intencao detectada:', intencao)
+
+    // Evita duplicar: se ja existe acordo aguardando vinculado a essa mensagem, ignora
+    const supabase = createClient()
+    const { data: ja } = await supabase
+      .from('acordos_chat_sugeridos')
+      .select('id')
+      .eq('mensagem_origem_id', mensagemId)
+      .maybeSingle()
+    if (ja) {
+      log('acordo ja existe para essa mensagem, pulando')
+      return
+    }
+
+    const r = await acordosService.sugerir(solicitacaoId, meuId, mensagemId, intencao)
+    if (!r) {
+      log('FALHOU ao inserir acordo - veja console anterior pelo erro')
+      return
+    }
+    log('acordo criado:', r.id)
+    setTrigger((n) => n + 1)
+  }
+
   // Carrega contadores
   useEffect(() => {
     let cancel = false
     async function carregar() {
-      const lista = await acordosService.listar(solicitacaoId)
-      if (cancel) return
-      const ativos = lista.filter((a) => a.status === 'aguardando' || a.status === 'aceito' || a.status === 'editado').length
-      const historico = lista.filter((a) => a.status === 'convertido' || a.status === 'recusado' || a.status === 'expirado').length
-      setContadores({ ativos, historico })
+      try {
+        const lista = await acordosService.listar(solicitacaoId)
+        if (cancel) return
+        const ativos = lista.filter((a) => a.status === 'aguardando' || a.status === 'aceito' || a.status === 'editado').length
+        const historico = lista.filter((a) => a.status === 'convertido' || a.status === 'recusado' || a.status === 'expirado').length
+        setContadores({ ativos, historico })
+        log('contadores atualizados:', { ativos, historico, totalLista: lista.length })
+      } catch (err) {
+        console.error('[acordos] listar falhou:', err)
+      }
     }
     void carregar()
     return () => {
@@ -37,11 +80,15 @@ export default function AbasAtendimento({ solicitacaoId, meuId, meuPapel, conver
     }
   }, [solicitacaoId, trigger])
 
-  // Escuta novas mensagens via Realtime e roda o detector
+  // Realtime: tambem detecta mensagens novas que entrarem (cobre o caso de a
+  // mensagem ter sido inserida sem passar pelo callback do chat — sincronizacao
+  // entre dispositivos do mesmo usuario, por exemplo).
   useEffect(() => {
     const supabase = createClient()
+    const nomeCanal = `acordos:${solicitacaoId}:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    log('subscribing realtime channel', nomeCanal)
     const channel = supabase
-      .channel(`acordos-${solicitacaoId}`)
+      .channel(nomeCanal)
       .on(
         'postgres_changes',
         {
@@ -51,22 +98,34 @@ export default function AbasAtendimento({ solicitacaoId, meuId, meuPapel, conver
           filter: `solicitacao_id=eq.${solicitacaoId}`,
         },
         async (payload) => {
-          const row = payload.new as { id: string; autor_id: string; texto: string }
-          // Só processa minhas próprias mensagens (evita duplicar do outro lado)
-          if (row.autor_id !== meuId) return
-          const intencao = detectarIntencao(row.texto || '')
-          if (!intencao) return
-          // Evita criar sugestão duplicada para a mesma mensagem
-          await acordosService.sugerir(solicitacaoId, meuId, row.id, intencao)
-          setTrigger((n) => n + 1)
+          // CORRECAO: as colunas certas sao remetente_id e conteudo
+          const row = payload.new as { id: string; remetente_id: string; conteudo: string }
+          log('realtime INSERT recebido:', row)
+          if (row.remetente_id !== meuId) {
+            log('mensagem nao e minha (remetente_id !== meuId), ignorando')
+            return
+          }
+          await detectarECriar(row.id, row.conteudo)
         },
       )
-      .subscribe()
+      .subscribe((status) => log('realtime subscribe status:', status))
 
     return () => {
+      log('removendo realtime channel', nomeCanal)
       void supabase.removeChannel(channel)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [solicitacaoId, meuId])
+
+  // Injeta callback no ChatAtendimento (fallback que funciona mesmo se Realtime falhar)
+  const conversaComCallback = isValidElement(conversa)
+    ? cloneElement(conversa as ReactElement<{ onMensagemEnviada?: (m: { id: string; conteudo: string }) => void }>, {
+        onMensagemEnviada: (msg: { id: string; conteudo: string }) => {
+          log('onMensagemEnviada (callback direto do chat):', msg)
+          void detectarECriar(msg.id, msg.conteudo)
+        },
+      })
+    : conversa
 
   return (
     <section className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800">
@@ -83,7 +142,7 @@ export default function AbasAtendimento({ solicitacaoId, meuId, meuPapel, conver
       </nav>
 
       <div className="min-h-[300px]">
-        {aba === 'conversa' && conversa}
+        {aba === 'conversa' && conversaComCallback}
         {aba === 'acordos' && (
           <PainelAcordos
             solicitacaoId={solicitacaoId}
