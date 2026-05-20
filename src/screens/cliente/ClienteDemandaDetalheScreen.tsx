@@ -260,14 +260,25 @@ export default function ClienteDemandaDetalheScreen({ id }: { id: string }) {
     setExcluindo(true)
     setAviso(null)
     const supabase = createClient()
-    const { error } = await supabase
+    // .select() faz o Supabase retornar as linhas afetadas — se a RLS
+    // bloqueia silenciosamente, data vira [] e o usuario recebe aviso real.
+    const { data, error } = await supabase
       .from('demandas')
       .delete()
       .eq('id', demanda.id)
+      .select('id')
     setExcluindo(false)
     if (error) {
       setConfirmandoExclusao(false)
       setAviso({ tipo: 'erro', texto: `Não foi possível excluir: ${error.message}` })
+      return
+    }
+    if (!data || data.length === 0) {
+      setConfirmandoExclusao(false)
+      setAviso({
+        tipo: 'erro',
+        texto: 'A exclusão foi bloqueada pelas regras do banco. Aplique a migration 033 ou contate o suporte.',
+      })
       return
     }
     router.push('/cliente/demandas')
