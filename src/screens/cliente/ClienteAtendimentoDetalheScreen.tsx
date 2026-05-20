@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { formatarDataPt } from '@/lib/formatar-data'
 import ChatAtendimento from '@/screens/atendimento/ChatAtendimento'
+import AbasAtendimento from '@/components/acordos/AbasAtendimento'
 import PerfilModal from '@/screens/perfil/PerfilModal'
 import GerenciadorEtapas from '@/components/etapas/GerenciadorEtapas'
 import ValorServicoCard from '@/components/financeiro/ValorServicoCard'
@@ -261,17 +262,19 @@ export default function ClienteAtendimentoDetalheScreen({ id }: { id: string }) 
         </div>
       </section>
 
-      <section className="flex-1 w-full mx-auto bg-white dark:bg-slate-900/80 border-x border-gray-100 dark:border-slate-800 flex flex-col">
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800">
-          <p className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide">💬 Chat</p>
-        </div>
-        <ChatAtendimento
-          solicitacaoId={atendimento.id}
-          meuId={meuId}
-          podeEnviar={ativo}
-          corMinha="bg-purple-700 text-white"
-        />
-      </section>
+      <AbasAtendimento
+        solicitacaoId={atendimento.id}
+        meuId={meuId}
+        meuPapel="cliente"
+        conversa={
+          <ChatAtendimento
+            solicitacaoId={atendimento.id}
+            meuId={meuId}
+            podeEnviar={ativo}
+            corMinha="bg-purple-700 text-white"
+          />
+        }
+      />
         </div>
 
         <aside className="hidden lg:block lg:sticky lg:top-14 self-start pt-4">
