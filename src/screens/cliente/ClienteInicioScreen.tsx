@@ -25,7 +25,6 @@ type SolicitacaoItem = {
   profissional: { id: string; nome: string; avatar_url: string | null } | null
 }
 
-type CategoriaPopular = { id: number; nome: string }
 
 type CategoriaContratada = { categoria_id: number; nome: string; count: number }
 
@@ -74,7 +73,6 @@ export default function ClienteInicioScreen() {
   const [resumo, setResumo] = useState<Resumo | null>(null)
   const [ativas, setAtivas] = useState<SolicitacaoItem[]>([])
   const [historico, setHistorico] = useState<SolicitacaoItem[]>([])
-  const [categoriasPopulares, setCategoriasPopulares] = useState<CategoriaPopular[]>([])
   const [recomendados, setRecomendados] = useState<PrestadorRecomendado[]>([])
   const [categoriasMinhas, setCategoriasMinhas] = useState<CategoriaContratada[]>([])
 
@@ -139,21 +137,6 @@ export default function ClienteInicioScreen() {
     }
     const todosPrestadores = (prestRes.data as unknown as PrestadorRaw[]) || []
 
-    // Categorias populares na plataforma (top 6 por nº de prestadores vinculados)
-    const counts: Record<number, { id: number; nome: string; count: number }> = {}
-    for (const pr of todosPrestadores) {
-      for (const c of pr.categorias) {
-        if (c.categoria) {
-          if (!counts[c.categoria.id]) counts[c.categoria.id] = { ...c.categoria, count: 0 }
-          counts[c.categoria.id].count++
-        }
-      }
-    }
-    const populares = Object.values(counts)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 8)
-      .map((c) => ({ id: c.id, nome: c.nome }))
-
     // categorias que o cliente já contratou
     const idCatContratadas = new Set<number>()
     for (const pr of todosPrestadores) {
@@ -213,7 +196,6 @@ export default function ClienteInicioScreen() {
     })
     setAtivas(ativasLista)
     setHistorico(histLista)
-    setCategoriasPopulares(populares)
     setRecomendados(recomendacoes)
     setCategoriasMinhas(minhasCats)
     setCarregando(false)
@@ -284,24 +266,6 @@ export default function ClienteInicioScreen() {
             temDemanda={r.nDemandas > 0}
             temAtendimento={r.nAtivas + r.nConcluidas > 0}
           />
-        )}
-
-        {/* Categorias populares */}
-        {!carregando && categoriasPopulares.length > 0 && (
-          <Secao titulo="O que outras pessoas estão buscando">
-            <div className="flex flex-wrap gap-2">
-              {categoriasPopulares.map((c) => (
-                <Link
-                  key={c.id}
-                  href="/cliente/buscar"
-                  className="bg-white dark:bg-slate-900 border border-purple-100 dark:border-purple-900/40 rounded-full px-3 py-1.5 text-xs font-semibold text-purple-800 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-slate-800 flex items-center gap-1.5 shadow-sm"
-                >
-                  <span>{iconeCategoria(c.nome)}</span>
-                  <span>{c.nome}</span>
-                </Link>
-              ))}
-            </div>
-          </Secao>
         )}
 
         {/* Solicitações em andamento */}
