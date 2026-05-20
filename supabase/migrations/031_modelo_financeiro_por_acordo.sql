@@ -52,13 +52,13 @@ where coalesce(valor_acordado, 0) > 0
 
 -- 4) Comentarios atualizados
 comment on column public.solicitacoes.valor_total_servico is
-  'Valor de referencia/estimativa do servico. NAO e' rateado automaticamente entre etapas.';
+  'Valor de referencia/estimativa do servico. NAO rateia automaticamente entre etapas.';
 comment on column public.etapas_atendimento.valor_acordado is
-  'Valor desta etapa quando ela e cobravel. Definido por acordo mutuo, nao por rateio.';
+  'Valor desta etapa quando cobravel. Definido por acordo mutuo, nao por rateio.';
 comment on column public.etapas_atendimento.cobravel is
   'Indica se a etapa gera cobranca financeira. Default false. Deve ser true so apos acordo explicito.';
 comment on column public.etapas_atendimento.momento_cobranca is
-  'Quando o pagamento da etapa ocorre: nao_se_aplica (gratuita), antes_da_etapa, apos_conclusao_etapa, somente_no_final, incluido_no_total_final.';
+  'Quando o pagamento da etapa ocorre: nao_se_aplica, antes_da_etapa, apos_conclusao_etapa, somente_no_final, incluido_no_total_final.';
 
 -- 5) Atualiza trigger de conversao acordo->etapa para refletir corretamente
 --    o flag cobravel baseado em "tem valor explicito > 0?"
