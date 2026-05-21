@@ -115,7 +115,8 @@ export default function PagamentoEtapaPanel({
       onAlterado()
     } catch (e) {
       console.error(e)
-      setErro('Falha ao confirmar pagamento.')
+      const msg = (e as Error)?.message || ''
+      setErro(`Falha ao confirmar pagamento.${msg ? ` Motivo: ${msg}` : ''}`)
     } finally {
       setProcessando(false)
     }
@@ -350,6 +351,18 @@ export default function PagamentoEtapaPanel({
           )}
           {pagamento.pix_payload_hash && (
             <p className="text-[9px] text-gray-400 dark:text-slate-500 break-all">Hash Pix (rastreio): {pagamento.pix_payload_hash}</p>
+          )}
+          {pagamento.pix_copia_e_cola && (
+            <div className="flex justify-center bg-white rounded-xl p-3 border border-gray-200 dark:border-slate-700">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(pagamento.pix_copia_e_cola)}`}
+                alt="QR Code Pix"
+                width={220}
+                height={220}
+                className="rounded"
+              />
+            </div>
           )}
           <div className="rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 p-2 max-h-24 overflow-y-auto">
             <code className="text-[10px] leading-tight text-gray-700 dark:text-slate-300 break-all">{pagamento.pix_copia_e_cola}</code>
