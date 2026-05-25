@@ -218,6 +218,14 @@ export default function Home() {
 
         {/* Rodapé */}
         <p className="text-white/40 text-xs text-center">🔒 Seus dados estão protegidos</p>
+        <div className="text-center pt-1">
+          <Link
+            href="/entrar"
+            className="inline-flex items-center gap-1 text-[11px] text-white/40 hover:text-white/70 transition-colors"
+          >
+            🛡️ Acesso administrativo
+          </Link>
+        </div>
       </div>
     </main>
   )

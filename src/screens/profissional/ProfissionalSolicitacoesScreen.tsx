@@ -68,7 +68,14 @@ export default function ProfissionalSolicitacoesScreen() {
     const { error } = await supabase.from('solicitacoes').update({ status }).eq('id', id)
     if (error) {
       console.error('[solicitacoes] update falhou:', error)
-      setAviso(`Falha ao atualizar: ${error.message}`)
+      // Mensagens amigaveis para erros do trigger de validacao
+      if (error.message.includes('prestador_nao_validado')) {
+        setAviso('Você precisa ter pelo menos um documento aprovado pelo admin antes de aceitar atendimentos. Envie em Ajustes → Validação.')
+      } else if (error.message.includes('prestador_suspenso')) {
+        setAviso('Sua conta está suspensa pela administração. Acesse a notificação no sino para mais detalhes.')
+      } else {
+        setAviso(`Falha ao atualizar: ${error.message}`)
+      }
       return
     }
     setSolicitacoes((atual) => atual.map((item) => (item.id === id ? { ...item, status } : item)))

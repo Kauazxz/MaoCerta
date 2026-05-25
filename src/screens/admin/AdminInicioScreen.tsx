@@ -1,0 +1,198 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
+
+type Contadores = {
+  usuarios: number
+  prestadores: number
+  clientes: number
+  validacoesPendentes: number
+  denunciasAbertas: number
+  disputasAbertas: number
+  atendimentosAtivos: number
+  totalAtendimentos: number
+}
+
+const ZERO: Contadores = {
+  usuarios: 0, prestadores: 0, clientes: 0, validacoesPendentes: 0,
+  denunciasAbertas: 0, disputasAbertas: 0, atendimentosAtivos: 0, totalAtendimentos: 0,
+}
+
+export default function AdminInicioScreen() {
+  const [c, setC] = useState<Contadores>(ZERO)
+  const [carregando, setCarregando] = useState(true)
+
+  useEffect(() => {
+    let cancel = false
+    async function load() {
+      const sb = createClient()
+      const [usu, prest, cli, validPend, denAbertas, dispAbertas, atendAtivos, totalAtend] = await Promise.all([
+        sb.from('profiles').select('id', { count: 'exact', head: true }),
+        sb.from('profiles').select('id', { count: 'exact', head: true }).eq('tipo', 'profissional'),
+        sb.from('profiles').select('id', { count: 'exact', head: true }).eq('tipo', 'cliente'),
+        sb.from('documentos_validacao').select('id', { count: 'exact', head: true }).in('status', ['pendente', 'em_analise']),
+        sb.from('denuncias').select('id', { count: 'exact', head: true }).in('status', ['aberta', 'em_analise']),
+        sb.from('disputas').select('id', { count: 'exact', head: true }).in('status', ['aberta', 'em_analise']),
+        sb.from('solicitacoes').select('id', { count: 'exact', head: true }).in('status', ['aceita', 'em_andamento']),
+        sb.from('solicitacoes').select('id', { count: 'exact', head: true }),
+      ])
+      if (cancel) return
+      setC({
+        usuarios: usu.count ?? 0,
+        prestadores: prest.count ?? 0,
+        clientes: cli.count ?? 0,
+        validacoesPendentes: validPend.count ?? 0,
+        denunciasAbertas: denAbertas.count ?? 0,
+        disputasAbertas: dispAbertas.count ?? 0,
+        atendimentosAtivos: atendAtivos.count ?? 0,
+        totalAtendimentos: totalAtend.count ?? 0,
+      })
+      setCarregando(false)
+    }
+    void load()
+    return () => { cancel = true }
+  }, [])
+
+  return (
+    <main className="min-h-screen bg-gradient-to-b from-amber-50/40 via-white to-white dark:from-slate-950 dark:via-slate-950 dark:to-slate-950 pb-10">
+      <header className="min-h-[200px] flex items-end bg-gradient-to-br from-amber-700 via-orange-600 to-red-600 text-white px-4 pt-8 pb-12 rounded-b-[2rem] shadow-lg">
+        <div className="max-w-6xl mx-auto w-full space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">Painel administrativo</p>
+          <h1 className="text-2xl font-bold">MaoCerta · Admin</h1>
+          <p className="text-sm text-white/85 leading-relaxed max-w-lg">
+            Controle de usuários, validações, denúncias, disputas e configuração da plataforma.
+          </p>
+        </div>
+      </header>
+
+      <div className="max-w-6xl mx-auto px-4 -mt-6 space-y-4 relative z-10">
+        {/* Atalhos de acao */}
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <Atalho
+            href="/admin/usuarios"
+            icone="👥"
+            titulo="Usuários"
+            contador={c.usuarios}
+            descricao={`${c.clientes} cliente(s), ${c.prestadores} prestador(es)`}
+            cor="from-purple-600 to-indigo-600"
+            carregando={carregando}
+          />
+          <Atalho
+            href="/admin/validacoes"
+            icone="🛡️"
+            titulo="Validações"
+            contador={c.validacoesPendentes}
+            descricao={c.validacoesPendentes === 0 ? 'Nada pendente' : 'Documento(s) aguardando análise'}
+            cor="from-blue-600 to-cyan-600"
+            destaque={c.validacoesPendentes > 0}
+            carregando={carregando}
+          />
+          <Atalho
+            href="/admin/denuncias"
+            icone="🚩"
+            titulo="Denúncias"
+            contador={c.denunciasAbertas}
+            descricao={c.denunciasAbertas === 0 ? 'Tudo em ordem' : 'Aberta(s) ou em análise'}
+            cor="from-red-600 to-pink-600"
+            destaque={c.denunciasAbertas > 0}
+            carregando={carregando}
+          />
+          <Atalho
+            href="/admin/disputas"
+            icone="⚖️"
+            titulo="Disputas"
+            contador={c.disputasAbertas}
+            descricao={c.disputasAbertas === 0 ? 'Sem disputas ativas' : 'Disputa(s) financeira(s)'}
+            cor="from-amber-600 to-orange-600"
+            destaque={c.disputasAbertas > 0}
+            carregando={carregando}
+          />
+        </section>
+
+        {/* Stats secundarias */}
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <CardStat titulo="Atendimentos ativos" valor={c.atendimentosAtivos} />
+          <CardStat titulo="Total de atendimentos" valor={c.totalAtendimentos} />
+          <CardStat titulo="Clientes na plataforma" valor={c.clientes} />
+          <CardStat titulo="Prestadores na plataforma" valor={c.prestadores} />
+        </section>
+
+        {/* Atalhos auxiliares */}
+        <section className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm divide-y divide-gray-100 dark:divide-slate-800">
+          <ItemMenu href="/admin/financeiro" icone="💰" titulo="Financeiro" descricao="Comissões, escrow, repasses" />
+          <ItemMenu href="/admin/categorias" icone="🗂️" titulo="Categorias" descricao="Gerenciar catálogo (em breve)" disabled />
+          <ItemMenu href="/admin/configuracoes" icone="⚙️" titulo="Configurações" descricao="Conta admin e suporte" />
+        </section>
+      </div>
+    </main>
+  )
+}
+
+function Atalho({
+  href, icone, titulo, contador, descricao, cor, destaque = false, carregando,
+}: {
+  href: string; icone: string; titulo: string; contador: number; descricao: string
+  cor: string; destaque?: boolean; carregando: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      className={`group relative overflow-hidden rounded-2xl border ${destaque ? 'border-amber-400 dark:border-amber-600' : 'border-gray-100 dark:border-slate-800'} bg-white dark:bg-slate-900 p-4 shadow-sm hover:shadow-md transition-shadow`}
+    >
+      <div className={`absolute inset-0 opacity-5 bg-gradient-to-br ${cor}`} />
+      <div className="relative space-y-1">
+        <div className="flex items-start justify-between">
+          <span className="text-2xl">{icone}</span>
+          {destaque && (
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-full">
+              Pendente
+            </span>
+          )}
+        </div>
+        <p className="text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">{titulo}</p>
+        <p className="text-3xl font-extrabold text-gray-900 dark:text-slate-100">
+          {carregando ? '—' : contador}
+        </p>
+        <p className="text-[11px] text-gray-500 dark:text-slate-400 leading-relaxed">{descricao}</p>
+      </div>
+    </Link>
+  )
+}
+
+function CardStat({ titulo, valor }: { titulo: string; valor: number }) {
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 px-4 py-3 shadow-sm">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">{titulo}</p>
+      <p className="text-xl font-bold text-gray-900 dark:text-slate-100 mt-1">{valor}</p>
+    </div>
+  )
+}
+
+function ItemMenu({ href, icone, titulo, descricao, disabled = false }: {
+  href: string; icone: string; titulo: string; descricao: string; disabled?: boolean
+}) {
+  if (disabled) {
+    return (
+      <div className="flex items-center gap-3 p-4 opacity-50 cursor-not-allowed">
+        <span className="text-lg shrink-0">{icone}</span>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm text-gray-900 dark:text-slate-100">{titulo}</p>
+          <p className="text-xs text-gray-500 dark:text-slate-400">{descricao}</p>
+        </div>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500">em breve</span>
+      </div>
+    )
+  }
+  return (
+    <Link href={href} className="flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
+      <span className="text-lg shrink-0">{icone}</span>
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-sm text-gray-900 dark:text-slate-100">{titulo}</p>
+        <p className="text-xs text-gray-500 dark:text-slate-400">{descricao}</p>
+      </div>
+      <span className="text-gray-300 dark:text-slate-600 text-lg">›</span>
+    </Link>
+  )
+}

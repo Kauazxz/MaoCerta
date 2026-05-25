@@ -101,7 +101,7 @@ function FormularioVerificar() {
           </div>
           <h1 className="text-xl font-bold text-white">Verifique seu e-mail</h1>
           <p className="text-white/60 text-sm">
-            Enviamos um código de 6 dígitos para{' '}
+            Enviamos um código de 8 dígitos para{' '}
             <span className="text-white font-medium">{email}</span>
           </p>
         </div>

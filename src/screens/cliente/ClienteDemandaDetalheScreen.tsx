@@ -192,7 +192,14 @@ export default function ClienteDemandaDetalheScreen({ id }: { id: string }) {
       if (erroSol || !solCriada) {
         setAcaoEmCurso(null)
         setPropostaParaEscolher(null)
-        setAviso({ tipo: 'erro', texto: `Falha ao abrir atendimento: ${erroSol?.message || 'sem id'}` })
+        const msg = erroSol?.message || 'sem id'
+        if (msg.includes('prestador_nao_validado')) {
+          setAviso({ tipo: 'erro', texto: 'Este prestador ainda não foi validado pela equipe MaoCerta. Escolha outro ou aguarde a validação.' })
+        } else if (msg.includes('prestador_suspenso')) {
+          setAviso({ tipo: 'erro', texto: 'Este prestador está suspenso pela administração. Escolha outro.' })
+        } else {
+          setAviso({ tipo: 'erro', texto: `Falha ao abrir atendimento: ${msg}` })
+        }
         return
       }
       solId = solCriada.id as string
