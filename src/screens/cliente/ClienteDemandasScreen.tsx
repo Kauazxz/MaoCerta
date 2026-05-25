@@ -5,7 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { iconeCategoria } from '@/lib/categorias-ui'
 import { formatarRelativoPt } from '@/lib/formatar-data'
-import { obterLimitesPlano, nomePlano } from '@/lib/plano-limites'
+import { obterLimitesPlano, nomePlano, formatarLimite } from '@/lib/plano-limites'
 
 type Categoria = { id: number; nome: string }
 type Demanda = {
@@ -93,7 +93,7 @@ export default function ClienteDemandasScreen() {
     }
     if (atingiuLimite) {
       setAviso(
-        `Seu plano ${nomePlano(plano)} permite até ${limites.maxDemandasAtivas} demanda(s) ativa(s). Conclua, cancele ou faça upgrade.`,
+        `Seu plano ${nomePlano(plano)} permite até ${formatarLimite(limites.maxDemandasAtivas)} demanda(s) ativa(s). Conclua, cancele ou faça upgrade.`,
       )
       return
     }
@@ -147,7 +147,7 @@ export default function ClienteDemandasScreen() {
                 {!podePublicar
                   ? 'Não publica demanda'
                   : `${ativas.length} de ${
-                      limites.maxDemandasAtivas >= 999 ? '∞' : limites.maxDemandasAtivas
+                      formatarLimite(limites.maxDemandasAtivas)
                     } demanda(s) ativa(s)`}
               </p>
             </div>

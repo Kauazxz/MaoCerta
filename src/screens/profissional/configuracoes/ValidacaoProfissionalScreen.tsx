@@ -9,7 +9,16 @@ type Documento = {
   tipo_documento: string
   arquivo_url: string
   status: string
+  motivo_rejeicao: string | null
   criado_em: string
+}
+
+function badgeStatus(status: string) {
+  const s = (status || '').toLowerCase()
+  if (s === 'aprovado')   return { label: 'Aprovado',     cls: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border-emerald-200 dark:border-emerald-900/40' }
+  if (s === 'rejeitado')  return { label: 'Rejeitado',    cls: 'bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-200 border-red-200 dark:border-red-900/40' }
+  if (s === 'em_analise') return { label: 'Em análise',   cls: 'bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-900/40' }
+  return                     { label: 'Aguardando análise', cls: 'bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-900/40' }
 }
 
 const TIPOS = ['CPF', 'CNPJ', 'Documento com foto', 'Comprovante de endereço']
@@ -29,7 +38,7 @@ export default function ValidacaoProfissionalScreen() {
 
       const { data } = await supabase
         .from('documentos_validacao')
-        .select('id, tipo_documento, arquivo_url, status, criado_em')
+        .select('id, tipo_documento, arquivo_url, status, motivo_rejeicao, criado_em')
         .eq('profissional_id', user.id)
         .order('criado_em', { ascending: false })
 
@@ -75,7 +84,7 @@ export default function ValidacaoProfissionalScreen() {
         tipo_documento: tipo,
         arquivo_url: arquivoUrl,
       })
-      .select('id, tipo_documento, arquivo_url, status, criado_em')
+      .select('id, tipo_documento, arquivo_url, status, motivo_rejeicao, criado_em')
       .single()
 
     setEnviando(false)
@@ -123,15 +132,29 @@ export default function ValidacaoProfissionalScreen() {
       <section className="bg-white dark:bg-slate-900 rounded-2xl p-4 space-y-3">
         <p className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Histórico de envios</p>
         {documentos.length === 0 && <p className="text-sm text-gray-500 dark:text-slate-400">Nenhum documento enviado ainda.</p>}
-        {documentos.map((doc) => (
-          <div key={doc.id} className="border border-gray-100 dark:border-slate-800 rounded-xl p-3">
-            <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">{doc.tipo_documento}</p>
-            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Status: {doc.status}</p>
-            <a href={doc.arquivo_url} target="_blank" className="text-xs text-emerald-700 font-semibold mt-2 inline-block">
-              Ver arquivo
-            </a>
-          </div>
-        ))}
+        {documentos.map((doc) => {
+          const badge = badgeStatus(doc.status)
+          return (
+            <div key={doc.id} className="border border-gray-100 dark:border-slate-800 rounded-xl p-3 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">{doc.tipo_documento}</p>
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border ${badge.cls} shrink-0`}>
+                  {badge.label}
+                </span>
+              </div>
+              {doc.motivo_rejeicao && doc.status === 'rejeitado' && (
+                <div className="rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/40 px-3 py-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-red-700 dark:text-red-300">Motivo da rejeição</p>
+                  <p className="text-xs text-red-900 dark:text-red-200 mt-0.5 leading-relaxed">{doc.motivo_rejeicao}</p>
+                  <p className="text-[10px] text-red-700 dark:text-red-300 italic mt-1">Envie o documento novamente corrigindo o problema acima.</p>
+                </div>
+              )}
+              <a href={doc.arquivo_url} target="_blank" className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold inline-block">
+                Ver arquivo
+              </a>
+            </div>
+          )
+        })}
       </section>
 
       {aviso && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">{aviso}</p>}

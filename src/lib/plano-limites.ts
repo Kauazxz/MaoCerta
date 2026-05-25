@@ -50,20 +50,28 @@ export const LIMITES_PLANO: Record<PlanoUsuario, LimitesPlano> = {
     podeEnviarPropostas: true,
   },
   premium: {
-    // Cliente Premium Plus (RN05/RN32, RN10) — RN32 sobrescreve RN05 → ilimitadas
+    // Cliente Premium Plus (RN05/RN32, RN10) — ilimitadas de verdade
     podePublicarDemanda: true,
-    maxDemandasAtivas: 999,
-    maxPropostasPorDemanda: 5,
-    maxNegociacoesForaDemanda: 999,
-    maxServicosSimultaneosCliente: 5,
-    // Prestador Premium (RN15, RN16)
-    maxCategorias: 999,
-    maxServicos: 999,
-    maxServicosSimultaneosPrestador: 6,
-    maxPropostasSimultaneasPrestador: 3,
+    maxDemandasAtivas: Number.POSITIVE_INFINITY,
+    maxPropostasPorDemanda: Number.POSITIVE_INFINITY,
+    maxNegociacoesForaDemanda: Number.POSITIVE_INFINITY,
+    maxServicosSimultaneosCliente: Number.POSITIVE_INFINITY,
+    // Prestador Premium (RN15, RN16) — tambem ilimitado
+    maxCategorias: Number.POSITIVE_INFINITY,
+    maxServicos: Number.POSITIVE_INFINITY,
+    maxServicosSimultaneosPrestador: Number.POSITIVE_INFINITY,
+    maxPropostasSimultaneasPrestador: Number.POSITIVE_INFINITY,
     podeAceitarDemandas: true,
     podeEnviarPropostas: true,
   },
+}
+
+/**
+ * Formata um limite numerico no padrao do app. Infinito vira "ilimitadas".
+ */
+export function formatarLimite(n: number): string {
+  if (!Number.isFinite(n)) return 'ilimitadas'
+  return String(n)
 }
 
 export function nomePlano(plano: string | null | undefined) {
