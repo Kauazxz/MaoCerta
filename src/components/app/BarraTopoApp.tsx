@@ -7,6 +7,7 @@ import { notificacoesService, type NotificacaoFinanceira } from '@/lib/supabase/
 import { logClienteErro } from '@/lib/telemetry'
 import { useNotificacoesUsuario } from '@/lib/realtime/hooks'
 import { createClient } from '@/lib/supabase/client'
+import { useAppRealtime } from '@/components/providers/AppRealtimeProvider'
 
 type Variant = 'cliente' | 'profissional' | 'admin'
 
@@ -42,10 +43,16 @@ export default function BarraTopoApp({ variant }: { variant: Variant }) {
     })()
   }, [carregar])
 
-  // Realtime filtrado server-side por user_id. So recebe as notificacoes do usuario logado.
+  // O AppRealtimeProvider ja mantem o subscribe global de notificacoes;
+  // o hook abaixo so' refaz o fetch local quando o tick do provider muda.
   useNotificacoesUsuario(userId, () => void carregar())
 
-  const naoLidas = lista.filter((n) => !n.lida_em).length
+  // naoLidas vem do provider global (atualiza em tempo real mesmo em outras telas).
+  const realtime = useAppRealtime()
+
+  // Combina o contador local com o do provider para garantir tempo real
+  const naoLidasLocal = lista.filter((n) => !n.lida_em).length
+  const naoLidas = Math.max(realtime.naoLidas, naoLidasLocal)
 
   function hrefNotif(n: NotificacaoFinanceira) {
     const p = (n.payload || {}) as Record<string, unknown>
@@ -91,7 +98,10 @@ export default function BarraTopoApp({ variant }: { variant: Variant }) {
           type="button"
           onClick={() => {
             setAberto((v) => !v)
-            if (!aberto) void carregar()
+            if (!aberto) {
+              void carregar()
+              realtime.marcarNotifLidas()
+            }
           }}
           aria-label="Alertas"
           className="relative w-9 h-9 rounded-full border border-gray-200 dark:border-slate-700 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md text-base shadow-md hover:bg-white dark:hover:bg-slate-800 transition-colors flex items-center justify-center"
