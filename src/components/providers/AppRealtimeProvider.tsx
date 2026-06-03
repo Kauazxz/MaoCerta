@@ -53,6 +53,8 @@ type Toast = {
   tipo: 'info' | 'sucesso' | 'erro'
 }
 
+type StatusCanal = 'idle' | 'subscribing' | 'subscribed' | 'error' | 'closed'
+
 type AppRealtimeContext = {
   /** Tick incrementa cada vez que algo muda na tabela. Use em deps de useEffect/refetch. */
   ticks: Ticks
@@ -70,6 +72,10 @@ type AppRealtimeContext = {
   papel: Papel | null
   /** id do user logado. Null se nao logado. */
   userId: string | null
+  /** Status de cada canal (pra debug visual). */
+  statusCanais: Record<string, StatusCanal>
+  /** Numero de eventos recebidos desde mount (debug). */
+  eventosRecebidos: number
 }
 
 const ctx = createContext<AppRealtimeContext | null>(null)
@@ -88,6 +94,8 @@ export function AppRealtimeProvider({
   const [ticks, setTicks] = useState<Ticks>(TICKS_ZERO)
   const [naoLidas, setNaoLidas] = useState(0)
   const [toasts, setToasts] = useState<Toast[]>([])
+  const [statusCanais, setStatusCanais] = useState<Record<string, StatusCanal>>({})
+  const [eventosRecebidos, setEventosRecebidos] = useState(0)
   const subscribedRef = useRef(false)
 
   const bump = useCallback((tabela: keyof Ticks) => {
@@ -159,14 +167,23 @@ export function AppRealtimeProvider({
     type PostgresChange = { eventType: string; new: Record<string, unknown>; old: Record<string, unknown> }
 
     function bind(canal: string, table: string, filter: string | undefined, onEvent: (p: PostgresChange) => void) {
+      setStatusCanais((s) => ({ ...s, [table]: 'subscribing' }))
       const ch = supabase.channel(canal)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .on('postgres_changes' as any, { event: '*', schema: 'public', table, ...(filter ? { filter } : {}) }, (payload: unknown) => {
           log('evento', table, payload)
+          setEventosRecebidos((n) => n + 1)
           onEvent(payload as PostgresChange)
         })
         .subscribe((status: string, err?: Error) => {
           log(`status ${canal} = ${status}`, err || '')
+          setStatusCanais((s) => ({
+            ...s,
+            [table]: status === 'SUBSCRIBED' ? 'subscribed'
+              : status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' ? 'error'
+              : status === 'CLOSED' ? 'closed'
+              : 'subscribing',
+          }))
         })
       return ch
     }
@@ -258,13 +275,103 @@ export function AppRealtimeProvider({
     ticks, naoLidas, toasts, dismissToast, bump, marcarNotifLidas,
     papel: userId ? papel : null,
     userId,
-  }), [ticks, naoLidas, toasts, dismissToast, bump, marcarNotifLidas, papel, userId])
+    statusCanais,
+    eventosRecebidos,
+  }), [ticks, naoLidas, toasts, dismissToast, bump, marcarNotifLidas, papel, userId, statusCanais, eventosRecebidos])
 
   return (
     <ctx.Provider value={value}>
       {children}
       <ToastOverlay toasts={toasts} onClose={dismissToast} />
+      <RealtimeHUD statusCanais={statusCanais} eventosRecebidos={eventosRecebidos} userId={userId} papel={papel} />
     </ctx.Provider>
+  )
+}
+
+/**
+ * Indicador VISUAL de status do Realtime. Aparece no canto inferior
+ * direito. Clica para expandir e ver cada canal individualmente. Cor:
+ *   verde   = todos SUBSCRIBED
+ *   amarelo = algum ainda subscribing
+ *   vermelho = algum em CHANNEL_ERROR / TIMED_OUT / CLOSED
+ *   cinza   = sem user ou sem canais ainda
+ */
+function RealtimeHUD({
+  statusCanais, eventosRecebidos, userId, papel,
+}: {
+  statusCanais: Record<string, StatusCanal>
+  eventosRecebidos: number
+  userId: string | null
+  papel: Papel | null
+}) {
+  const [aberto, setAberto] = useState(false)
+
+  const entries = Object.entries(statusCanais)
+  const allSubscribed = entries.length > 0 && entries.every(([, s]) => s === 'subscribed')
+  const anyError = entries.some(([, s]) => s === 'error' || s === 'closed')
+  const anyPending = entries.some(([, s]) => s === 'subscribing' || s === 'idle')
+
+  const cor =
+    !userId ? 'bg-gray-400' :
+    anyError ? 'bg-red-500' :
+    anyPending ? 'bg-amber-400' :
+    allSubscribed ? 'bg-emerald-500' :
+    'bg-gray-400'
+
+  const label =
+    !userId ? 'sem login' :
+    anyError ? 'erro' :
+    anyPending ? 'conectando…' :
+    allSubscribed ? 'ao vivo' :
+    '—'
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setAberto((v) => !v)}
+        className="fixed bottom-24 right-3 lg:bottom-4 z-[55] flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/95 dark:bg-slate-900/95 border border-gray-200 dark:border-slate-700 shadow-md text-[10px] font-bold text-gray-700 dark:text-slate-200"
+        aria-label="Status do Realtime"
+      >
+        <span className={`w-2.5 h-2.5 rounded-full ${cor}`} />
+        <span>RT · {label}</span>
+        {eventosRecebidos > 0 && <span className="text-[9px] text-gray-500">· {eventosRecebidos}</span>}
+      </button>
+
+      {aberto && (
+        <div className="fixed bottom-36 right-3 lg:bottom-16 z-[56] w-72 max-h-72 overflow-y-auto bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-2xl p-3 text-xs">
+          <div className="flex items-center justify-between mb-2">
+            <p className="font-bold text-gray-900 dark:text-slate-100">Realtime — debug</p>
+            <button onClick={() => setAberto(false)} className="text-gray-400">✕</button>
+          </div>
+          <p className="text-[10px] text-gray-500 dark:text-slate-400 mb-2">
+            Papel: {papel ?? '—'}<br />
+            User: {userId ? `${userId.slice(0, 8)}…` : '—'}<br />
+            Eventos recebidos: {eventosRecebidos}
+          </p>
+          {entries.length === 0 && <p className="text-[10px] italic text-gray-500">Sem canais abertos</p>}
+          <ul className="space-y-1">
+            {entries.map(([table, status]) => {
+              const dot =
+                status === 'subscribed' ? 'bg-emerald-500' :
+                status === 'subscribing' ? 'bg-amber-400' :
+                status === 'error' ? 'bg-red-500' :
+                status === 'closed' ? 'bg-red-400' :
+                'bg-gray-400'
+              return (
+                <li key={table} className="flex items-center justify-between gap-2 py-1 border-b border-gray-100 dark:border-slate-800">
+                  <span className="font-mono text-[10px] truncate text-gray-700 dark:text-slate-300">{table}</span>
+                  <span className="flex items-center gap-1">
+                    <span className={`w-2 h-2 rounded-full ${dot}`} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">{status}</span>
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+    </>
   )
 }
 
