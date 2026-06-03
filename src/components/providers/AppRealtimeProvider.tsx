@@ -223,7 +223,7 @@ export function AppRealtimeProvider({
       () => bump('propostas'),
     )
 
-    // -- Solicitacoes: filtra pelo lado do user
+    // -- Solicitacoes: filtra pelo lado do user (sem toast - notificacoes_financeiras ja cobre)
     const chSolicitacoes = bind(
       `app:sol:${papel}:${userId}`,
       'solicitacoes',
@@ -232,28 +232,15 @@ export function AppRealtimeProvider({
         : papel === 'profissional'
           ? `profissional_id=eq.${userId}`
           : undefined,
-      (p) => {
-        bump('solicitacoes')
-        if (p.eventType === 'INSERT' && papel === 'profissional') {
-          const titulo = String((p.new as Record<string, unknown>).titulo ?? 'Novo pedido')
-          pushToast('Nova solicitação recebida', titulo, 'sucesso')
-        }
-      },
+      () => bump('solicitacoes'),
     )
 
-    // -- Documentos: prestador ve os seus, admin ve tudo
+    // -- Documentos: prestador ve os seus, admin ve tudo (sem toast aqui)
     const chDocumentos = bind(
       `app:docs:${papel}:${userId}`,
       'documentos_validacao',
       papel === 'profissional' ? `profissional_id=eq.${userId}` : undefined,
-      (p) => {
-        bump('documentos')
-        if (p.eventType === 'UPDATE' && papel === 'profissional') {
-          const status = String((p.new as Record<string, unknown>).status ?? '')
-          if (status === 'aprovado') pushToast('Documento aprovado', 'Seu documento foi validado!', 'sucesso')
-          else if (status === 'rejeitado') pushToast('Documento rejeitado', 'Confira o motivo e reenvie.', 'erro')
-        }
-      },
+      () => bump('documentos'),
     )
 
     // -- Wallet (so prestador) --
