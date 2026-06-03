@@ -17,7 +17,12 @@ type Demanda = {
   created_at: string
   cliente_id: string
   categorias: { nome: string } | null
-  cliente: { nome: string; cidade: string | null } | null
+  cliente: {
+    nome: string
+    cidade: string | null
+    estado: string | null
+    avatar_url: string | null
+  } | null
 }
 
 export default function ProfissionalDemandasScreen() {
@@ -44,10 +49,12 @@ export default function ProfissionalDemandasScreen() {
     if (!q) return demandas
     return demandas.filter((d) => {
       const cat = d.categorias?.nome?.toLowerCase() || ''
+      const cliente = d.cliente?.nome?.toLowerCase() || ''
       return (
         d.titulo.toLowerCase().includes(q) ||
         d.descricao.toLowerCase().includes(q) ||
-        cat.includes(q)
+        cat.includes(q) ||
+        cliente.includes(q)
       )
     })
   }, [demandas, busca])
@@ -123,7 +130,7 @@ export default function ProfissionalDemandasScreen() {
       .select(`
         id, titulo, descricao, categoria_id, status, created_at, cliente_id,
         categorias ( nome ),
-        cliente:cliente_id ( nome, cidade )
+        cliente:cliente_id ( nome, cidade, estado, avatar_url )
       `)
       .eq('status', 'aberta')
       .neq('cliente_id', user.id)
@@ -296,22 +303,38 @@ export default function ProfissionalDemandasScreen() {
                   <h2 className="text-base font-bold text-gray-900 dark:text-slate-100 leading-snug">{d.titulo}</h2>
                   <p className="text-sm text-gray-600 dark:text-slate-400 leading-relaxed">{d.descricao}</p>
 
-                  {cliente && (
-                    <button
-                      type="button"
-                      onClick={() => setPerfilAberto(d.cliente_id)}
-                      className="text-left w-full bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl px-3 py-2 transition-colors"
-                    >
-                      <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Cliente</p>
-                      <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">
-                        {cliente.nome}
-                        {cliente.cidade && (
-                          <span className="text-xs font-normal text-gray-500 dark:text-slate-400"> · {cliente.cidade}</span>
-                        )}
-                      </p>
-                      <p className="text-[11px] text-emerald-700 font-semibold mt-0.5">Ver perfil completo ›</p>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setPerfilAberto(d.cliente_id)}
+                    className="text-left w-full flex items-center gap-3 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl px-3 py-2.5 transition-colors"
+                  >
+                    {cliente?.avatar_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={cliente.avatar_url}
+                        alt={cliente.nome}
+                        className="w-10 h-10 rounded-full object-cover border border-white/70 dark:border-slate-700"
+                      />
+                    ) : (
+                      <span className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-sm font-bold shrink-0">
+                        {(cliente?.nome || 'C').trim().slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
+                        Cliente solicitante
+                      </span>
+                      <span className="block text-sm font-semibold text-gray-800 dark:text-slate-200 truncate">
+                        {cliente?.nome || 'Cliente'}
+                      </span>
+                      <span className="block text-[11px] text-gray-500 dark:text-slate-400 truncate">
+                        {[cliente?.cidade, cliente?.estado].filter(Boolean).join(' · ') || 'Ver perfil completo'}
+                      </span>
+                    </span>
+                    <span className="text-emerald-700 dark:text-emerald-300 text-lg" aria-hidden>
+                      ›
+                    </span>
+                  </button>
 
                   {demandaForm !== d.id && (
                     <div className="flex gap-2 pt-1">
