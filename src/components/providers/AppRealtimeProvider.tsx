@@ -295,6 +295,8 @@ function RealtimeHUD({
   papel: Papel | null
 }) {
   const [aberto, setAberto] = useState(false)
+  // So aparece em ambiente de desenvolvimento. Em producao fica oculta.
+  if (process.env.NODE_ENV === 'production') return null
 
   const entries = Object.entries(statusCanais)
   const allSubscribed = entries.length > 0 && entries.every(([, s]) => s === 'subscribed')
