@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { prestadorService, type Atendimento } from '@/lib/supabase/prestador'
 import { formatarDataPt, formatarRelativoPt } from '@/lib/formatar-data'
-import { useRealtimeRefresh } from '@/lib/realtime'
+import { useSolicitacoesPrestador } from '@/lib/realtime/hooks'
 
 type Aba = 'andamento' | 'historico'
 
@@ -30,13 +30,14 @@ export default function ProfissionalAtendimentosScreen() {
   const [historico, setHistorico] = useState<Atendimento[]>([])
   const [carregando, setCarregando] = useState(true)
   const [aviso, setAviso] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
     carregar()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useRealtimeRefresh('solicitacoes', () => carregar(), { key: 'prest-atend' })
+  useSolicitacoesPrestador(userId, () => carregar())
 
   async function carregar() {
     setCarregando(true)
@@ -48,6 +49,7 @@ export default function ProfissionalAtendimentosScreen() {
         setAviso('Faça login como prestador para acompanhar seus atendimentos.')
         return
       }
+      setUserId(user.id)
       const [andamento, hist] = await Promise.all([
         prestadorService.getAtendimentosEmAndamento(user.id),
         prestadorService.getHistoricoAtendimentos(user.id),

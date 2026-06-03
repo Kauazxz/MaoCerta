@@ -5,7 +5,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTheme } from '@/components/providers/ThemeProvider'
 import { notificacoesService, type NotificacaoFinanceira } from '@/lib/supabase/notificacoes'
 import { logClienteErro } from '@/lib/telemetry'
-import { useRealtimeRefresh } from '@/lib/realtime'
+import { useNotificacoesUsuario } from '@/lib/realtime/hooks'
+import { createClient } from '@/lib/supabase/client'
 
 type Variant = 'cliente' | 'profissional' | 'admin'
 
@@ -14,6 +15,7 @@ export default function BarraTopoApp({ variant }: { variant: Variant }) {
   const [aberto, setAberto] = useState(false)
   const [lista, setLista] = useState<NotificacaoFinanceira[]>([])
   const [carregando, setCarregando] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
 
   const base =
     variant === 'cliente' ? '/cliente' : variant === 'profissional' ? '/profissional' : '/admin'
@@ -33,10 +35,15 @@ export default function BarraTopoApp({ variant }: { variant: Variant }) {
 
   useEffect(() => {
     void carregar()
+    void (async () => {
+      const supabase = createClient()
+      const { data } = await supabase.auth.getUser()
+      setUserId(data.user?.id ?? null)
+    })()
   }, [carregar])
 
-  // Realtime: novas notificacoes / leituras atualizam o sino sem F5
-  useRealtimeRefresh('notificacoes_financeiras', () => void carregar(), { key: `bar-${variant}` })
+  // Realtime filtrado server-side por user_id. So recebe as notificacoes do usuario logado.
+  useNotificacoesUsuario(userId, () => void carregar())
 
   const naoLidas = lista.filter((n) => !n.lida_em).length
 

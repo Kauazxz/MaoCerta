@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { iconeCategoria } from '@/lib/categorias-ui'
 import { formatarRelativoPt } from '@/lib/formatar-data'
 import { obterLimitesPlano, nomePlano } from '@/lib/plano-limites'
-import { useRealtimeRefresh } from '@/lib/realtime'
+import { useDemandasPublicas, usePropostasPrestador } from '@/lib/realtime/hooks'
 import PerfilModal from '@/screens/perfil/PerfilModal'
 
 type Demanda = {
@@ -57,9 +57,9 @@ export default function ProfissionalDemandasScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Realtime: novas demandas / propostas alteram a lista visivel
-  useRealtimeRefresh('demandas', () => carregar(), { key: 'prest-demandas' })
-  useRealtimeRefresh('propostas', () => carregar(), { key: 'prest-demandas-prop' })
+  // Realtime: demandas publicas (qualquer mudanca) e minhas propostas (filter por mim)
+  useDemandasPublicas(() => carregar())
+  usePropostasPrestador(userId, () => carregar())
 
   async function carregar() {
     setCarregando(true)

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { adminActions } from '@/lib/supabase/admin-actions'
 import { formatarDataPt, formatarRelativoPt } from '@/lib/formatar-data'
 import CabecalhoAdmin from '@/components/admin/CabecalhoAdmin'
+import { useDocumentosAdmin } from '@/lib/realtime/hooks'
 
 type Documento = {
   id: string
@@ -48,6 +49,9 @@ export default function AdminValidacoesScreen() {
   }
 
   useEffect(() => { void carregar() }, [])
+
+  // Realtime: prestador enviou doc novo, ou status mudou
+  useDocumentosAdmin(() => void carregar())
 
   const filtrados = docs.filter((d) => {
     const s = (d.status || '').toLowerCase().trim()

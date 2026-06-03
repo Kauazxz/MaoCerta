@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { SOLICITACOES_DEMONSTRACAO } from '@/lib/demo-marketplace'
 import { formatarDataPt, formatarRelativoPt } from '@/lib/formatar-data'
-import { useRealtimeRefresh } from '@/lib/realtime'
+import { useSolicitacoesPrestador } from '@/lib/realtime/hooks'
 
 type Solicitacao = {
   id: string
@@ -31,8 +31,10 @@ export default function ProfissionalSolicitacoesScreen() {
   const [carregando, setCarregando] = useState(true)
   const [aviso, setAviso] = useState<string | null>(null)
   const [tick, setTick] = useState(0)
+  const [userId, setUserId] = useState<string | null>(null)
 
-  useRealtimeRefresh('solicitacoes', () => setTick((n) => n + 1), { key: 'prest-solic' })
+  // Realtime filtrado por profissional_id (vejo so o que e' meu)
+  useSolicitacoesPrestador(userId, () => setTick((n) => n + 1))
 
   useEffect(() => {
     async function carregar() {
@@ -43,6 +45,7 @@ export default function ProfissionalSolicitacoesScreen() {
         setCarregando(false)
         return
       }
+      setUserId(user.id)
 
       const { data, error } = await supabase
         .from('solicitacoes')

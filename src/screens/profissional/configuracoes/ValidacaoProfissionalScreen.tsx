@@ -1,8 +1,9 @@
 'use client'
 
-import { ChangeEvent, useEffect, useState } from 'react'
+import { ChangeEvent, useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import CabecalhoAjuste from '@/screens/configuracoes/CabecalhoAjuste'
+import { useDocumentosPrestador } from '@/lib/realtime/hooks'
 
 type Documento = {
   id: string
@@ -28,24 +29,30 @@ export default function ValidacaoProfissionalScreen() {
   const [enviando, setEnviando] = useState(false)
   const [documentos, setDocumentos] = useState<Documento[]>([])
   const [aviso, setAviso] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  const carregar = useCallback(async () => {
+    const supabase = createClient()
+    const { data: auth } = await supabase.auth.getUser()
+    const user = auth.user
+    if (!user) return
+    setUserId(user.id)
+
+    const { data } = await supabase
+      .from('documentos_validacao')
+      .select('id, tipo_documento, arquivo_url, status, motivo_rejeicao, criado_em')
+      .eq('profissional_id', user.id)
+      .order('criado_em', { ascending: false })
+
+    setDocumentos((data as Documento[] | null) || [])
+  }, [])
 
   useEffect(() => {
-    async function carregar() {
-      const supabase = createClient()
-      const { data: auth } = await supabase.auth.getUser()
-      const user = auth.user
-      if (!user) return
+    void carregar()
+  }, [carregar])
 
-      const { data } = await supabase
-        .from('documentos_validacao')
-        .select('id, tipo_documento, arquivo_url, status, motivo_rejeicao, criado_em')
-        .eq('profissional_id', user.id)
-        .order('criado_em', { ascending: false })
-
-      setDocumentos((data as Documento[] | null) || [])
-    }
-    carregar()
-  }, [])
+  // Realtime: quando admin aprova/rejeita meu documento, vejo na hora
+  useDocumentosPrestador(userId, () => void carregar())
 
   async function enviarDocumento(e: ChangeEvent<HTMLInputElement>) {
     const arquivo = e.target.files?.[0]

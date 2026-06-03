@@ -5,14 +5,106 @@ import { createClient } from './supabase/client'
 
 type Evento = 'INSERT' | 'UPDATE' | 'DELETE' | '*'
 
+export type RealtimePayload<T = Record<string, unknown>> = {
+  eventType: Evento
+  new: T
+  old: T
+  schema: string
+  table: string
+  commit_timestamp: string
+  errors: unknown
+}
+
+const DEBUG = typeof window !== 'undefined' && process.env.NODE_ENV !== 'production'
+
+function log(...args: unknown[]) {
+  if (DEBUG) console.log('[realtime]', ...args)
+}
+
 /**
- * Faz subscribe em postgres_changes de uma tabela e chama `onChange`
- * quando algo mudar. Idempotente: nome do canal e' unico por mount
- * para evitar colisao no Strict Mode.
+ * Subscribe primitivo em postgres_changes. SEM polling.
  *
- * - `filter` segue o formato do Supabase ("coluna=eq.valor").
- * - Use `key` para forcar resubscribe quando dependencias importantes
- *   mudarem (ex.: troca de usuario logado).
+ * - `onEvent` recebe o payload tipado e pode decidir como atualizar
+ *   o estado (insere na lista, refaz fetch da linha, invalida cache,
+ *   etc.). NAO faz fetch automatico - quem chama controla.
+ *
+ * - `filter` segue a sintaxe do Supabase ("coluna=eq.valor") e
+ *   roda no servidor, reduzindo trafego e respeitando RLS.
+ *
+ * - O canal e' UNICO por tabela+filter+key durante o ciclo de vida
+ *   do componente. Reconexao automatica em CHANNEL_ERROR ate 5
+ *   tentativas (backoff progressivo).
+ */
+export function useRealtimeChannel<T = Record<string, unknown>>(
+  table: string,
+  onEvent: (payload: RealtimePayload<T>) => void,
+  options: {
+    event?: Evento
+    filter?: string
+    key?: string | number
+    schema?: string
+  } = {},
+) {
+  const callbackRef = useRef(onEvent)
+  callbackRef.current = onEvent
+
+  const { event = '*', filter, key = '', schema = 'public' } = options
+
+  useEffect(() => {
+    if (!table) return
+
+    const supabase = createClient()
+    const nomeCanal = `rt:${table}:${key}:${event}:${filter ?? 'nofilter'}`
+
+    let tentativas = 0
+    let cancelado = false
+
+    const config: { event: Evento; schema: string; table: string; filter?: string } = {
+      event, schema, table,
+    }
+    if (filter) config.filter = filter
+
+    let channel: ReturnType<typeof supabase.channel> | null = null
+
+    function subscribe() {
+      if (cancelado) return
+      tentativas++
+      log(`subscribe attempt ${tentativas} -> ${nomeCanal}`)
+
+      channel = supabase
+        .channel(nomeCanal)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .on('postgres_changes' as any, config, (payload: unknown) => {
+          log(`evento em ${table}:`, payload)
+          callbackRef.current(payload as RealtimePayload<T>)
+        })
+        .subscribe((status: string, err?: Error) => {
+          log(`status ${nomeCanal} = ${status}`, err || '')
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            if (tentativas < 5 && !cancelado) {
+              const delay = Math.min(1000 * tentativas, 5000)
+              setTimeout(() => {
+                if (channel) void supabase.removeChannel(channel)
+                subscribe()
+              }, delay)
+            }
+          }
+        })
+    }
+
+    subscribe()
+
+    return () => {
+      cancelado = true
+      if (channel) void supabase.removeChannel(channel)
+    }
+  }, [table, event, filter, key, schema])
+}
+
+/**
+ * Compatibilidade com codigo que usa o hook antigo (chama
+ * `onChange` sem payload). Reaproveita `useRealtimeChannel`
+ * descartando o payload. Sem polling, sem fallback.
  */
 export function useRealtimeRefresh(
   table: string,
@@ -22,61 +114,7 @@ export function useRealtimeRefresh(
     filter?: string
     key?: string | number
     schema?: string
-    /** Intervalo (ms) do polling de fallback. Default 10000 (10s). 0 = desliga. */
-    pollMs?: number
   } = {},
 ) {
-  const callbackRef = useRef(onChange)
-  callbackRef.current = onChange
-
-  const { event = '*', filter, key = '', schema = 'public', pollMs = 10000 } = options
-
-  useEffect(() => {
-    const supabase = createClient()
-    const nomeCanal = `rt:${table}:${key}:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-
-    const config: {
-      event: Evento
-      schema: string
-      table: string
-      filter?: string
-    } = { event, schema, table }
-    if (filter) config.filter = filter
-
-    let recebeuEvento = false
-
-    const channel = supabase
-      .channel(nomeCanal)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .on('postgres_changes' as any, config, (payload: unknown) => {
-        recebeuEvento = true
-        if (process.env.NODE_ENV !== 'production') {
-          console.log(`[realtime:${table}] evento`, payload)
-        }
-        callbackRef.current()
-      })
-      .subscribe((status: string) => {
-        if (process.env.NODE_ENV !== 'production') {
-          console.log(`[realtime:${table}] subscribe status =`, status)
-        }
-      })
-
-    // Polling de fallback: dispara o callback periodicamente para
-    // garantir refresh mesmo que o Realtime falhe (rede, cache,
-    // tabela nao habilitada no Studio, etc.)
-    let intervalId: ReturnType<typeof setInterval> | null = null
-    if (pollMs > 0) {
-      intervalId = setInterval(() => {
-        callbackRef.current()
-        if (process.env.NODE_ENV !== 'production' && !recebeuEvento) {
-          console.log(`[realtime:${table}] poll fallback (sem evento Realtime ainda)`)
-        }
-      }, pollMs)
-    }
-
-    return () => {
-      if (intervalId) clearInterval(intervalId)
-      void supabase.removeChannel(channel)
-    }
-  }, [table, event, filter, key, schema, pollMs])
+  useRealtimeChannel(table, () => onChange(), options)
 }

@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { useDashboardAdminRefresh } from '@/lib/realtime/hooks'
 
 type Contadores = {
   usuarios: number
@@ -24,36 +25,35 @@ export default function AdminInicioScreen() {
   const [c, setC] = useState<Contadores>(ZERO)
   const [carregando, setCarregando] = useState(true)
 
-  useEffect(() => {
-    let cancel = false
-    async function load() {
-      const sb = createClient()
-      const [usu, prest, cli, validPend, denAbertas, dispAbertas, atendAtivos, totalAtend] = await Promise.all([
-        sb.from('profiles').select('id', { count: 'exact', head: true }),
-        sb.from('profiles').select('id', { count: 'exact', head: true }).eq('tipo', 'profissional'),
-        sb.from('profiles').select('id', { count: 'exact', head: true }).eq('tipo', 'cliente'),
-        sb.from('documentos_validacao').select('id', { count: 'exact', head: true }).in('status', ['pendente', 'em_analise']),
-        sb.from('denuncias').select('id', { count: 'exact', head: true }).in('status', ['aberta', 'em_analise']),
-        sb.from('disputas').select('id', { count: 'exact', head: true }).in('status', ['aberta', 'em_analise']),
-        sb.from('solicitacoes').select('id', { count: 'exact', head: true }).in('status', ['aceita', 'em_andamento']),
-        sb.from('solicitacoes').select('id', { count: 'exact', head: true }),
-      ])
-      if (cancel) return
-      setC({
-        usuarios: usu.count ?? 0,
-        prestadores: prest.count ?? 0,
-        clientes: cli.count ?? 0,
-        validacoesPendentes: validPend.count ?? 0,
-        denunciasAbertas: denAbertas.count ?? 0,
-        disputasAbertas: dispAbertas.count ?? 0,
-        atendimentosAtivos: atendAtivos.count ?? 0,
-        totalAtendimentos: totalAtend.count ?? 0,
-      })
-      setCarregando(false)
-    }
-    void load()
-    return () => { cancel = true }
+  const load = useCallback(async () => {
+    const sb = createClient()
+    const [usu, prest, cli, validPend, denAbertas, dispAbertas, atendAtivos, totalAtend] = await Promise.all([
+      sb.from('profiles').select('id', { count: 'exact', head: true }),
+      sb.from('profiles').select('id', { count: 'exact', head: true }).eq('tipo', 'profissional'),
+      sb.from('profiles').select('id', { count: 'exact', head: true }).eq('tipo', 'cliente'),
+      sb.from('documentos_validacao').select('id', { count: 'exact', head: true }).in('status', ['pendente', 'em_analise']),
+      sb.from('denuncias').select('id', { count: 'exact', head: true }).in('status', ['aberta', 'em_analise']),
+      sb.from('disputas').select('id', { count: 'exact', head: true }).in('status', ['aberta', 'em_analise']),
+      sb.from('solicitacoes').select('id', { count: 'exact', head: true }).in('status', ['aceita', 'em_andamento']),
+      sb.from('solicitacoes').select('id', { count: 'exact', head: true }),
+    ])
+    setC({
+      usuarios: usu.count ?? 0,
+      prestadores: prest.count ?? 0,
+      clientes: cli.count ?? 0,
+      validacoesPendentes: validPend.count ?? 0,
+      denunciasAbertas: denAbertas.count ?? 0,
+      disputasAbertas: dispAbertas.count ?? 0,
+      atendimentosAtivos: atendAtivos.count ?? 0,
+      totalAtendimentos: totalAtend.count ?? 0,
+    })
+    setCarregando(false)
   }, [])
+
+  useEffect(() => { void load() }, [load])
+
+  // Realtime: qualquer mudanca importante recalcula os contadores
+  useDashboardAdminRefresh(() => void load())
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-amber-50/40 via-white to-white dark:from-slate-950 dark:via-slate-950 dark:to-slate-950 pb-10">

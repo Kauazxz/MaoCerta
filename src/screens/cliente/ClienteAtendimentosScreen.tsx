@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatarDataPt, formatarRelativoPt } from '@/lib/formatar-data'
-import { useRealtimeRefresh } from '@/lib/realtime'
+import { useSolicitacoesCliente } from '@/lib/realtime/hooks'
 
 type Aba = 'andamento' | 'historico'
 
@@ -39,13 +39,15 @@ export default function ClienteAtendimentosScreen() {
   const [historico, setHistorico] = useState<Atendimento[]>([])
   const [carregando, setCarregando] = useState(true)
   const [aviso, setAviso] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
     carregar()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useRealtimeRefresh('solicitacoes', () => carregar(), { key: 'cli-atend' })
+  // Realtime: solicitacoes onde sou cliente (filtro server-side)
+  useSolicitacoesCliente(userId, () => carregar())
 
   async function carregar() {
     setCarregando(true)
@@ -57,6 +59,7 @@ export default function ClienteAtendimentosScreen() {
       setCarregando(false)
       return
     }
+    setUserId(user.id)
 
     const { data, error } = await supabase
       .from('solicitacoes')

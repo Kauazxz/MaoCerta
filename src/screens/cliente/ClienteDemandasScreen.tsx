@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { iconeCategoria } from '@/lib/categorias-ui'
 import { formatarRelativoPt } from '@/lib/formatar-data'
 import { obterLimitesPlano, nomePlano, formatarLimite } from '@/lib/plano-limites'
-import { useRealtimeRefresh } from '@/lib/realtime'
+import { useDemandasCliente, usePropostasCliente } from '@/lib/realtime/hooks'
 
 type Categoria = { id: number; nome: string }
 type Demanda = {
@@ -37,6 +37,9 @@ export default function ClienteDemandasScreen() {
   const [buscaCat, setBuscaCat] = useState('')
   const [plano, setPlano] = useState<string>('free')
   const [tick, setTick] = useState(0)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  const recarregar = () => setTick((n) => n + 1)
 
   const limites = useMemo(() => obterLimitesPlano(plano), [plano])
   const ativas = useMemo(
@@ -62,6 +65,7 @@ export default function ClienteDemandasScreen() {
 
       const { data: auth } = await supabase.auth.getUser()
       if (!auth.user) return
+      setUserId(auth.user.id)
 
       const [demRes, perfilRes] = await Promise.all([
         supabase
@@ -86,9 +90,9 @@ export default function ClienteDemandasScreen() {
     carregar()
   }, [tick])
 
-  // Realtime: qualquer mudanca em demandas ou propostas re-carrega a lista
-  useRealtimeRefresh('demandas', () => setTick((n) => n + 1), { key: 'cli-demandas' })
-  useRealtimeRefresh('propostas', () => setTick((n) => n + 1), { key: 'cli-demandas-prop' })
+  // Realtime: minhas demandas (filtro server-side por cliente_id) + propostas chegando
+  useDemandasCliente(userId, recarregar)
+  usePropostasCliente(recarregar)
 
   async function publicarDemanda(e: FormEvent) {
     e.preventDefault()
