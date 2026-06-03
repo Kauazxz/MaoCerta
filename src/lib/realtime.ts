@@ -44,10 +44,17 @@ export function useRealtimeRefresh(
     const channel = supabase
       .channel(nomeCanal)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .on('postgres_changes' as any, config, () => {
+      .on('postgres_changes' as any, config, (payload: unknown) => {
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`[realtime:${table}] evento`, payload)
+        }
         callbackRef.current()
       })
-      .subscribe()
+      .subscribe((status: string) => {
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`[realtime:${table}:${nomeCanal}] subscribe status =`, status)
+        }
+      })
 
     return () => {
       void supabase.removeChannel(channel)
