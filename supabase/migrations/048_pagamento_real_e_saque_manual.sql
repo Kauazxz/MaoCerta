@@ -12,9 +12,9 @@
 --   2) pagamentos.mp_payment_id + qr para Pix real do Mercado Pago
 --   3) saques.chave_pix_destino + tipo_chave_destino + processado_por +
 --      observacao do comprovante (snapshot do que foi pago)
---   4) wallets para o admin (user_id = qualquer admin ou um id especial)
---      Para nao depender de user especifico, usamos o flag
---      e' tipo='plataforma' (extensao) com chave UUID fixa
+--   4) platform_balance + platform_transactions: tabelas proprias para
+--      a plataforma acumular a comissao (nao da pra usar wallets porque
+--      wallets.user_id e' FK -> profiles -> auth.users)
 --   5) Funcao processar pagamento de etapa pago:
 --      - marca pagamentos.status = 'em_escrow'
 --      - credita comissao na wallet platform
@@ -61,25 +61,54 @@ alter table public.saques
   add column if not exists processado_por uuid references public.profiles(id) on delete set null,
   add column if not exists comprovante_obs text;
 
--- 4) Wallet da plataforma - usamos um id fixo bem conhecido
--- Como wallet.user_id e' uuid PK, criamos um perfil fantasma 'plataforma'
--- ou simplesmente usamos um id reservado. Optamos por id reservado
--- para nao misturar com usuarios reais.
-do $$
-declare
-  v_platform_id constant uuid := '00000000-0000-0000-0000-000000000001';
-begin
-  -- Cria a wallet da plataforma se ainda nao existe
-  insert into public.wallets (user_id, saldo, saldo_bloqueado)
-  values (v_platform_id, 0, 0)
-  on conflict (user_id) do nothing;
-end $$;
+-- 4) Saldo da plataforma - tabela propria (single-row).
+-- Nao da' pra reutilizar wallets porque wallets.user_id e'
+-- FK para profiles -> auth.users. UUID fantasma seria rejeitado.
+create table if not exists public.platform_balance (
+  id smallint primary key check (id = 1),
+  saldo numeric(12,2) not null default 0,
+  updated_at timestamptz not null default now()
+);
+
+insert into public.platform_balance (id, saldo) values (1, 0)
+on conflict (id) do nothing;
+
+alter table public.platform_balance enable row level security;
+
+drop policy if exists "platform_balance_select_admin" on public.platform_balance;
+create policy "platform_balance_select_admin" on public.platform_balance
+  for select to authenticated
+  using ((select public.is_administrator()));
+
+-- Tabela de movimentacao da plataforma (auditoria das comissoes
+-- e eventuais ajustes). Separada das wallet_transactions porque
+-- a coluna user_id de wallet_transactions tambem aponta para
+-- profiles e nao aceita UUID fantasma.
+create table if not exists public.platform_transactions (
+  id bigserial primary key,
+  tipo text not null check (tipo in ('comissao', 'ajuste', 'estorno')),
+  valor numeric(12,2) not null,
+  descricao text,
+  referencia text,
+  etapa_id uuid references public.etapas_atendimento(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.platform_transactions enable row level security;
+
+drop policy if exists "platform_transactions_select_admin" on public.platform_transactions;
+create policy "platform_transactions_select_admin" on public.platform_transactions
+  for select to authenticated
+  using ((select public.is_administrator()));
+
+create index if not exists idx_platform_transactions_created_at
+  on public.platform_transactions (created_at desc);
 
 -- View auxiliar de saldo plataforma
 create or replace view public.v_saldo_plataforma as
-  select user_id, saldo, saldo_bloqueado, updated_at
-  from public.wallets
-  where user_id = '00000000-0000-0000-0000-000000000001';
+  select saldo, updated_at
+  from public.platform_balance
+  where id = 1;
 
 grant select on public.v_saldo_plataforma to authenticated;
 
@@ -94,7 +123,6 @@ set search_path = public
 as $$
 declare
   v_p record;
-  v_platform_id constant uuid := '00000000-0000-0000-0000-000000000001';
 begin
   select * into v_p from public.pagamentos where id = p_pagamento_id for update;
   if not found then
@@ -113,14 +141,14 @@ begin
   where id = p_pagamento_id;
 
   -- Credita comissao na plataforma (saldo disponivel imediato)
-  update public.wallets
+  update public.platform_balance
   set saldo = saldo + v_p.valor_comissao, updated_at = now()
-  where user_id = v_platform_id;
+  where id = 1;
 
-  insert into public.wallet_transactions (
-    user_id, tipo, valor, descricao, referencia, etapa_id
+  insert into public.platform_transactions (
+    tipo, valor, descricao, referencia, etapa_id
   ) values (
-    v_platform_id, 'comissao_plataforma', v_p.valor_comissao,
+    'comissao', v_p.valor_comissao,
     'Comissao etapa ' || coalesce(v_p.etapa_id::text, ''),
     v_p.id::text, v_p.etapa_id
   );
