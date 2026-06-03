@@ -22,12 +22,14 @@ export function useRealtimeRefresh(
     filter?: string
     key?: string | number
     schema?: string
+    /** Intervalo (ms) do polling de fallback. Default 10000 (10s). 0 = desliga. */
+    pollMs?: number
   } = {},
 ) {
   const callbackRef = useRef(onChange)
   callbackRef.current = onChange
 
-  const { event = '*', filter, key = '', schema = 'public' } = options
+  const { event = '*', filter, key = '', schema = 'public', pollMs = 10000 } = options
 
   useEffect(() => {
     const supabase = createClient()
@@ -41,10 +43,13 @@ export function useRealtimeRefresh(
     } = { event, schema, table }
     if (filter) config.filter = filter
 
+    let recebeuEvento = false
+
     const channel = supabase
       .channel(nomeCanal)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .on('postgres_changes' as any, config, (payload: unknown) => {
+        recebeuEvento = true
         if (process.env.NODE_ENV !== 'production') {
           console.log(`[realtime:${table}] evento`, payload)
         }
@@ -52,12 +57,26 @@ export function useRealtimeRefresh(
       })
       .subscribe((status: string) => {
         if (process.env.NODE_ENV !== 'production') {
-          console.log(`[realtime:${table}:${nomeCanal}] subscribe status =`, status)
+          console.log(`[realtime:${table}] subscribe status =`, status)
         }
       })
 
+    // Polling de fallback: dispara o callback periodicamente para
+    // garantir refresh mesmo que o Realtime falhe (rede, cache,
+    // tabela nao habilitada no Studio, etc.)
+    let intervalId: ReturnType<typeof setInterval> | null = null
+    if (pollMs > 0) {
+      intervalId = setInterval(() => {
+        callbackRef.current()
+        if (process.env.NODE_ENV !== 'production' && !recebeuEvento) {
+          console.log(`[realtime:${table}] poll fallback (sem evento Realtime ainda)`)
+        }
+      }, pollMs)
+    }
+
     return () => {
+      if (intervalId) clearInterval(intervalId)
       void supabase.removeChannel(channel)
     }
-  }, [table, event, filter, key, schema])
+  }, [table, event, filter, key, schema, pollMs])
 }
