@@ -169,12 +169,15 @@ export function AppRealtimeProvider({
     function bind(canal: string, table: string, filter: string | undefined, onEvent: (p: PostgresChange) => void) {
       setStatusCanais((s) => ({ ...s, [table]: 'subscribing' }))
       const ch = supabase.channel(canal)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .on('postgres_changes' as any, { event: '*', schema: 'public', table, ...(filter ? { filter } : {}) }, (payload: unknown) => {
-          log('evento', table, payload)
-          setEventosRecebidos((n) => n + 1)
-          onEvent(payload as PostgresChange)
-        })
+        .on(
+          'postgres_changes' as never,
+          { event: '*', schema: 'public', table, ...(filter ? { filter } : {}) } as never,
+          (payload: unknown) => {
+            log('evento', table, payload)
+            setEventosRecebidos((n) => n + 1)
+            onEvent(payload as PostgresChange)
+          },
+        )
         .subscribe((status: string, err?: Error) => {
           log(`status ${canal} = ${status}`, err || '')
           setStatusCanais((s) => ({

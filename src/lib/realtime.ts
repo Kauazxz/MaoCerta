@@ -73,11 +73,14 @@ export function useRealtimeChannel<T = Record<string, unknown>>(
 
       channel = supabase
         .channel(nomeCanal)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .on('postgres_changes' as any, config, (payload: unknown) => {
-          log(`evento em ${table}:`, payload)
-          callbackRef.current(payload as RealtimePayload<T>)
-        })
+        .on(
+          'postgres_changes' as never,
+          config as never,
+          (payload: unknown) => {
+            log(`evento em ${table}:`, payload)
+            callbackRef.current(payload as RealtimePayload<T>)
+          },
+        )
         .subscribe((status: string, err?: Error) => {
           log(`status ${nomeCanal} = ${status}`, err || '')
           if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
