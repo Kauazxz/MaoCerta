@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { iconeCategoria } from '@/lib/categorias-ui'
 import { formatarDataPt, formatarRelativoPt } from '@/lib/formatar-data'
 import { obterLimitesPlano, nomePlano } from '@/lib/plano-limites'
+import { useRealtimeRefresh } from '@/lib/realtime'
 import PerfilModal from '@/screens/perfil/PerfilModal'
 
 type Demanda = {
@@ -81,7 +82,18 @@ export default function ClienteDemandaDetalheScreen({ id }: { id: string }) {
 
   useEffect(() => {
     carregar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
+
+  // Realtime: propostas e solicitacoes que afetem ESTA demanda
+  useRealtimeRefresh('propostas', () => carregar(), {
+    filter: `demanda_id=eq.${id}`,
+    key: `dem-${id}-prop`,
+  })
+  useRealtimeRefresh('solicitacoes', () => carregar(), {
+    filter: `demanda_origem_id=eq.${id}`,
+    key: `dem-${id}-sol`,
+  })
 
   async function carregar() {
     setCarregando(true)

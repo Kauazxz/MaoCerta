@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { prestadorService, type Atendimento } from '@/lib/supabase/prestador'
 import { formatarDataPt, formatarRelativoPt } from '@/lib/formatar-data'
+import { useRealtimeRefresh } from '@/lib/realtime'
 
 type Aba = 'andamento' | 'historico'
 
@@ -32,7 +33,10 @@ export default function ProfissionalAtendimentosScreen() {
 
   useEffect(() => {
     carregar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useRealtimeRefresh('solicitacoes', () => carregar(), { key: 'prest-atend' })
 
   async function carregar() {
     setCarregando(true)

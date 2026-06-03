@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatarDataPt, formatarRelativoPt } from '@/lib/formatar-data'
+import { useRealtimeRefresh } from '@/lib/realtime'
 
 type Aba = 'andamento' | 'historico'
 
@@ -41,7 +42,10 @@ export default function ClienteAtendimentosScreen() {
 
   useEffect(() => {
     carregar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useRealtimeRefresh('solicitacoes', () => carregar(), { key: 'cli-atend' })
 
   async function carregar() {
     setCarregando(true)

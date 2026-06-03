@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { SOLICITACOES_DEMONSTRACAO } from '@/lib/demo-marketplace'
 import { formatarDataPt, formatarRelativoPt } from '@/lib/formatar-data'
+import { useRealtimeRefresh } from '@/lib/realtime'
 
 type Solicitacao = {
   id: string
@@ -29,6 +30,9 @@ export default function ProfissionalSolicitacoesScreen() {
   const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([])
   const [carregando, setCarregando] = useState(true)
   const [aviso, setAviso] = useState<string | null>(null)
+  const [tick, setTick] = useState(0)
+
+  useRealtimeRefresh('solicitacoes', () => setTick((n) => n + 1), { key: 'prest-solic' })
 
   useEffect(() => {
     async function carregar() {
@@ -60,7 +64,7 @@ export default function ProfissionalSolicitacoesScreen() {
       setCarregando(false)
     }
     carregar()
-  }, [])
+  }, [tick])
 
   async function atualizarStatus(id: string, status: 'aceita' | 'recusada') {
     setAviso(null)

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTheme } from '@/components/providers/ThemeProvider'
 import { notificacoesService, type NotificacaoFinanceira } from '@/lib/supabase/notificacoes'
 import { logClienteErro } from '@/lib/telemetry'
+import { useRealtimeRefresh } from '@/lib/realtime'
 
 type Variant = 'cliente' | 'profissional' | 'admin'
 
@@ -33,6 +34,9 @@ export default function BarraTopoApp({ variant }: { variant: Variant }) {
   useEffect(() => {
     void carregar()
   }, [carregar])
+
+  // Realtime: novas notificacoes / leituras atualizam o sino sem F5
+  useRealtimeRefresh('notificacoes_financeiras', () => void carregar(), { key: `bar-${variant}` })
 
   const naoLidas = lista.filter((n) => !n.lida_em).length
 

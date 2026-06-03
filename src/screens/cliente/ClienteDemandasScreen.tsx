@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { iconeCategoria } from '@/lib/categorias-ui'
 import { formatarRelativoPt } from '@/lib/formatar-data'
 import { obterLimitesPlano, nomePlano, formatarLimite } from '@/lib/plano-limites'
+import { useRealtimeRefresh } from '@/lib/realtime'
 
 type Categoria = { id: number; nome: string }
 type Demanda = {
@@ -35,6 +36,7 @@ export default function ClienteDemandasScreen() {
   const [aviso, setAviso] = useState<string | null>(null)
   const [buscaCat, setBuscaCat] = useState('')
   const [plano, setPlano] = useState<string>('free')
+  const [tick, setTick] = useState(0)
 
   const limites = useMemo(() => obterLimitesPlano(plano), [plano])
   const ativas = useMemo(
@@ -82,7 +84,11 @@ export default function ClienteDemandasScreen() {
       setPlano((perfilRes.data?.plano as string) || 'free')
     }
     carregar()
-  }, [])
+  }, [tick])
+
+  // Realtime: qualquer mudanca em demandas ou propostas re-carrega a lista
+  useRealtimeRefresh('demandas', () => setTick((n) => n + 1), { key: 'cli-demandas' })
+  useRealtimeRefresh('propostas', () => setTick((n) => n + 1), { key: 'cli-demandas-prop' })
 
   async function publicarDemanda(e: FormEvent) {
     e.preventDefault()
