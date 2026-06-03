@@ -2,11 +2,10 @@
 -- Limpa lancamentos de carteira originados do Pix SANDBOX (anterior
 -- a integracao real com Mercado Pago feita na 048).
 --
--- Heuristica de "sandbox": pagamentos sem mp_payment_id sao todos do
--- fluxo antigo (sandbox interno gerava SANDBOX-xxx). Como agora todo
--- pagamento real passa pela /api/pix/etapa/criar e tem mp_payment_id,
--- qualquer wallet_transaction que referencia um pagamento sem
--- mp_payment_id e' lixo de teste.
+-- Heuristica de "sandbox": pagamentos com pix_txid prefixado por
+-- 'SANDBOX-' foram criados pelo fluxo antigo (fn_financeiro_criar_pagamento_pix
+-- antes da integracao real com MP). Funciona com ou sem a coluna
+-- mp_payment_id da migration 048.
 --
 -- O que faz:
 -- 1) Apaga as wallet_transactions cuja referencia aponta para
@@ -22,7 +21,7 @@ begin;
 
 -- 1) Apaga lancamentos de carteira originados de pagamentos sandbox
 with sandbox as (
-  select id::text as id_text from public.pagamentos where mp_payment_id is null
+  select id::text as id_text from public.pagamentos where pix_txid like 'SANDBOX-%'
 )
 delete from public.wallet_transactions
 where referencia in (select id_text from sandbox);
@@ -60,7 +59,7 @@ where user_id not in (select distinct user_id from public.wallet_transactions);
 -- 4) Marca os pagamentos sandbox como cancelados para nao reaparecerem
 update public.pagamentos
 set status = 'cancelado', updated_at = now()
-where mp_payment_id is null
+where pix_txid like 'SANDBOX-%'
   and status in ('aguardando_pagamento', 'pago', 'em_escrow', 'contestado');
 
 commit;
