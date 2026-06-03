@@ -330,16 +330,20 @@ function RealtimeHUD({
       <button
         type="button"
         onClick={() => setAberto((v) => !v)}
-        className="fixed bottom-24 right-3 lg:bottom-4 z-[55] flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/95 dark:bg-slate-900/95 border border-gray-200 dark:border-slate-700 shadow-md text-[10px] font-bold text-gray-700 dark:text-slate-200"
+        style={{ position: 'fixed', top: 80, left: 12, zIndex: 99999 }}
+        className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-black/85 text-white shadow-2xl text-xs font-bold border-2 border-amber-400"
         aria-label="Status do Realtime"
       >
-        <span className={`w-2.5 h-2.5 rounded-full ${cor}`} />
+        <span className={`w-3 h-3 rounded-full ${cor}`} />
         <span>RT · {label}</span>
-        {eventosRecebidos > 0 && <span className="text-[9px] text-gray-500">· {eventosRecebidos}</span>}
+        {eventosRecebidos > 0 && <span className="text-[10px] opacity-80">· {eventosRecebidos} evt</span>}
       </button>
 
       {aberto && (
-        <div className="fixed bottom-36 right-3 lg:bottom-16 z-[56] w-72 max-h-72 overflow-y-auto bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-2xl p-3 text-xs">
+        <div
+          style={{ position: 'fixed', top: 120, left: 12, zIndex: 99999 }}
+          className="w-72 max-h-80 overflow-y-auto bg-white dark:bg-slate-900 border-2 border-amber-400 rounded-2xl shadow-2xl p-3 text-xs"
+        >
           <div className="flex items-center justify-between mb-2">
             <p className="font-bold text-gray-900 dark:text-slate-100">Realtime — debug</p>
             <button onClick={() => setAberto(false)} className="text-gray-400">✕</button>
