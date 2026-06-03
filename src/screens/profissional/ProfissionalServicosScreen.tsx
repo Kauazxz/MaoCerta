@@ -289,11 +289,11 @@ export default function ProfissionalServicosScreen() {
             {servicos.map((item) => (
               <li
                 key={item.id}
-                className="rounded-xl border border-gray-100 dark:border-slate-800 bg-gradient-to-br from-white to-slate-50/80 p-4 flex gap-3"
+                className="rounded-xl border border-gray-100 dark:border-slate-800 bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-800 p-4 flex gap-3"
               >
                 <span className="text-2xl shrink-0">{iconeCategoria(nomeCategoria(item.categoria_id))}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wide">{nomeCategoria(item.categoria_id)}</p>
+                  <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">{nomeCategoria(item.categoria_id)}</p>
                   <p className="text-sm font-semibold text-gray-900 dark:text-slate-100 mt-0.5">{item.descricao}</p>
                   <div className="mt-2 flex items-center justify-between gap-2">
                     <p className="text-xs text-gray-500 dark:text-slate-400">
