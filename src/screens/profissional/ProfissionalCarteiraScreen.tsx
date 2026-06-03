@@ -37,6 +37,13 @@ export default function ProfissionalCarteiraScreen() {
   const [observacao, setObservacao] = useState('')
   const [enviandoSaque, setEnviandoSaque] = useState(false)
 
+  const [chavePix, setChavePix] = useState<string | null>(null)
+  const [tipoChavePix, setTipoChavePix] = useState<string | null>(null)
+  const [editChavePix, setEditChavePix] = useState(false)
+  const [novaChave, setNovaChave] = useState('')
+  const [novaChaveTipo, setNovaChaveTipo] = useState<'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria'>('cpf')
+  const [salvandoChave, setSalvandoChave] = useState(false)
+
   useEffect(() => {
     carregar()
   }, [])
@@ -52,15 +59,19 @@ export default function ProfissionalCarteiraScreen() {
         return
       }
       setUserId(user.id)
-      const [wallet, movs, sqs] = await Promise.all([
+      const [wallet, movs, sqs, pix] = await Promise.all([
         prestadorService.getWallet(user.id),
         prestadorService.getWalletTransactions(user.id),
         prestadorService.getSaques(user.id),
+        prestadorService.getChavePix(user.id),
       ])
       setSaldo(Number(wallet?.saldo ?? 0))
       setSaldoBloqueado(Number(wallet?.saldo_bloqueado ?? 0))
       setMovimentacoes(movs)
       setSaques(sqs)
+      setChavePix(pix.chave)
+      setTipoChavePix(pix.tipo)
+      if (!pix.chave) setEditChavePix(true)
     } catch (e) {
       console.error(e)
       setAviso({ tipo: 'erro', texto: 'Não foi possível carregar a carteira.' })
@@ -79,6 +90,11 @@ export default function ProfissionalCarteiraScreen() {
   async function enviarSaque(e: FormEvent) {
     e.preventDefault()
     if (!userId) return
+    if (!chavePix) {
+      setAviso({ tipo: 'erro', texto: 'Cadastre sua chave Pix antes de solicitar saque.' })
+      setEditChavePix(true)
+      return
+    }
     const valor = Number(valorSaque.replace(',', '.'))
     if (!valor || valor <= 0) {
       setAviso({ tipo: 'erro', texto: 'Informe um valor válido.' })
@@ -107,6 +123,30 @@ export default function ProfissionalCarteiraScreen() {
       }
     } finally {
       setEnviandoSaque(false)
+    }
+  }
+
+  async function salvarChavePix(e: FormEvent) {
+    e.preventDefault()
+    if (!userId) return
+    const valor = novaChave.trim()
+    if (!valor) {
+      setAviso({ tipo: 'erro', texto: 'Informe a chave Pix.' })
+      return
+    }
+    setSalvandoChave(true)
+    try {
+      await prestadorService.salvarChavePix(userId, valor, novaChaveTipo)
+      setChavePix(valor)
+      setTipoChavePix(novaChaveTipo)
+      setEditChavePix(false)
+      setNovaChave('')
+      setAviso({ tipo: 'ok', texto: 'Chave Pix salva.' })
+    } catch (err) {
+      console.error(err)
+      setAviso({ tipo: 'erro', texto: 'Não foi possível salvar a chave Pix.' })
+    } finally {
+      setSalvandoChave(false)
     }
   }
 
@@ -155,11 +195,111 @@ export default function ProfissionalCarteiraScreen() {
           <button
             type="button"
             onClick={() => setMostrarSaque(v => !v)}
-            disabled={saldoDisponivel <= 0}
+            disabled={saldoDisponivel <= 0 || !chavePix}
             className="w-full bg-emerald-700 text-white font-bold py-3 rounded-2xl text-sm hover:bg-emerald-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {mostrarSaque ? 'Cancelar' : 'Solicitar saque'}
           </button>
+          {!chavePix && (
+            <p className="text-[11px] text-amber-800 font-semibold">
+              Cadastre sua chave Pix abaixo para liberar o botão de saque.
+            </p>
+          )}
+        </section>
+
+        <section className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-md p-5 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-[11px] text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                Chave Pix para receber
+              </p>
+              {chavePix ? (
+                <>
+                  <p className="text-sm font-bold text-gray-900 dark:text-slate-100 mt-1 break-all">{chavePix}</p>
+                  <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
+                    Tipo: <strong className="uppercase">{tipoChavePix || '—'}</strong>
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-gray-700 dark:text-slate-300 mt-1">Ainda nao cadastrada.</p>
+              )}
+            </div>
+            {!editChavePix && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditChavePix(true)
+                  setNovaChave(chavePix ?? '')
+                  setNovaChaveTipo(
+                    (['cpf', 'cnpj', 'email', 'telefone', 'aleatoria'].includes((tipoChavePix ?? '') as string)
+                      ? (tipoChavePix as 'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria')
+                      : 'cpf'),
+                  )
+                }}
+                className="text-[11px] font-semibold text-emerald-700 hover:underline"
+              >
+                {chavePix ? 'Alterar' : 'Cadastrar'}
+              </button>
+            )}
+          </div>
+
+          {editChavePix && (
+            <form onSubmit={salvarChavePix} className="space-y-2 border-t border-gray-100 dark:border-slate-800 pt-3">
+              <label className="block">
+                <span className="text-xs font-semibold text-gray-600 dark:text-slate-400 uppercase tracking-wide">
+                  Tipo da chave
+                </span>
+                <select
+                  value={novaChaveTipo}
+                  onChange={e => setNovaChaveTipo(e.target.value as typeof novaChaveTipo)}
+                  className="mt-1 w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-600"
+                >
+                  <option value="cpf">CPF</option>
+                  <option value="cnpj">CNPJ</option>
+                  <option value="email">E-mail</option>
+                  <option value="telefone">Telefone</option>
+                  <option value="aleatoria">Aleatoria</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-xs font-semibold text-gray-600 dark:text-slate-400 uppercase tracking-wide">
+                  Chave
+                </span>
+                <input
+                  type="text"
+                  value={novaChave}
+                  onChange={e => setNovaChave(e.target.value)}
+                  placeholder="Ex.: 123.456.789-00, seu@email.com..."
+                  required
+                  className="mt-1 w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-600 focus:bg-white"
+                />
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={salvandoChave}
+                  className="flex-1 bg-emerald-700 text-white font-semibold py-2.5 rounded-xl text-sm hover:bg-emerald-800 disabled:opacity-50"
+                >
+                  {salvandoChave ? 'Salvando...' : 'Salvar chave Pix'}
+                </button>
+                {chavePix && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditChavePix(false)
+                      setNovaChave('')
+                    }}
+                    className="text-xs font-semibold text-gray-600 dark:text-slate-400 px-3"
+                  >
+                    Voltar
+                  </button>
+                )}
+              </div>
+              <p className="text-[10px] text-gray-500 dark:text-slate-500 leading-relaxed">
+                A chave fica salva no seu perfil e é copiada para cada solicitação de saque (snapshot).
+              </p>
+            </form>
+          )}
         </section>
 
         {mostrarSaque && (

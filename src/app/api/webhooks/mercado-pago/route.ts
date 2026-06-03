@@ -10,6 +10,7 @@ import { createServiceRoleClient } from '@/lib/supabase/admin'
  *
  * Roteamento:
  * - external_reference "plano:<id>" → atualiza pagamentos_plano + plano do usuario.
+ * - external_reference "etapa:<id>" → libera comissao plataforma + escrow prestador.
  * - Fluxo antigo (etapa, Pix sandbox interno) → chama fn_financeiro_webhook_confirmar_pix.
  */
 
@@ -97,6 +98,24 @@ export async function POST(req: Request) {
     }
     const { data: rpcData, error } = await admin.rpc('fn_pagamento_plano_confirmar', {
       p_mp_payment_id: String(paymentId),
+    })
+    if (error) {
+      return NextResponse.json({ ok: false, erro: error.message }, { status: 500 })
+    }
+    return NextResponse.json(rpcData)
+  }
+
+  // ETAPA com Mercado Pago real
+  if (externalReference.startsWith('etapa:')) {
+    if (mpStatus !== 'approved') {
+      return NextResponse.json({ ok: true, ignorado: true, mp_status: mpStatus })
+    }
+    const pagamentoId = externalReference.slice('etapa:'.length).trim()
+    if (!pagamentoId) {
+      return NextResponse.json({ ok: false, erro: 'pagamento_id_invalido' }, { status: 400 })
+    }
+    const { data: rpcData, error } = await admin.rpc('fn_pagamento_etapa_confirmado', {
+      p_pagamento_id: pagamentoId,
     })
     if (error) {
       return NextResponse.json({ ok: false, erro: error.message }, { status: 500 })

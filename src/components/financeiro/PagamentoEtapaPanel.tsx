@@ -69,6 +69,33 @@ export default function PagamentoEtapaPanel({
     }
   }, [])
 
+  // Polling do status enquanto aguarda Pix: faz fallback se o webhook MP
+  // demorar ou se a aba estiver fora do realtime. Para assim que sai de
+  // aguardando_pagamento.
+  useEffect(() => {
+    if (!pagamento) return
+    if (st !== 'aguardando_pagamento') return
+    let cancelado = false
+    const intervalo = setInterval(async () => {
+      try {
+        const r = await fetch(`/api/pix/etapa/status?id=${pagamento.id}`, { cache: 'no-store' })
+        if (!r.ok) return
+        const data = await r.json().catch(() => null)
+        if (!data || cancelado) return
+        const novo = normalizarStatusPagamento(data.status)
+        if (novo && novo !== 'aguardando_pagamento') {
+          onAlterado()
+        }
+      } catch {
+        // silencioso - tentaremos de novo no proximo tick
+      }
+    }, 5000)
+    return () => {
+      cancelado = true
+      clearInterval(intervalo)
+    }
+  }, [pagamento, st, onAlterado])
+
   const podePagar =
     meuTipo === 'cliente' &&
     ativo &&
@@ -83,13 +110,14 @@ export default function PagamentoEtapaPanel({
     setProcessando(true)
     setErro(null)
     try {
-      const r = await financeiroService.criarPagamentoPix(etapa.id, {
-        escrowTermsAccepted: true,
-        escrowTermsVersion: 'escrow-v1-2026',
-        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+      const resp = await fetch('/api/pix/etapa/criar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ etapa_id: etapa.id, aceitouTermos: true }),
       })
-      if (!r.ok) {
-        setErro(mapErro(r.erro))
+      const data = await resp.json().catch(() => ({}))
+      if (!resp.ok || data?.ok === false) {
+        setErro(mapErro(data?.erro))
         return
       }
       onAlterado()
@@ -97,26 +125,6 @@ export default function PagamentoEtapaPanel({
       console.error(e)
       const msg = (e as Error)?.message || ''
       setErro(`Não foi possível gerar o Pix. ${msg ? `Motivo: ${msg}` : 'Tente de novo.'}`)
-    } finally {
-      setProcessando(false)
-    }
-  }
-
-  async function confirmarSandbox() {
-    if (!pagamento) return
-    setProcessando(true)
-    setErro(null)
-    try {
-      const r = await financeiroService.confirmarPixSandbox(pagamento.id)
-      if (!r.ok) {
-        setErro(mapErro(r.erro))
-        return
-      }
-      onAlterado()
-    } catch (e) {
-      console.error(e)
-      const msg = (e as Error)?.message || ''
-      setErro(`Falha ao confirmar pagamento.${msg ? ` Motivo: ${msg}` : ''}`)
     } finally {
       setProcessando(false)
     }
@@ -341,22 +349,28 @@ export default function PagamentoEtapaPanel({
       {st === 'aguardando_pagamento' && meuTipo === 'cliente' && (
         <div className="space-y-2">
           <p className="text-[11px] text-gray-600 dark:text-slate-400">
-            <strong>Sandbox / demo:</strong> copie o código ou simule o webhook de confirmação.
+            Escaneie o QR Code no seu app do banco ou copie o código Pix. Assim que o pagamento for confirmado, o
+            status atualiza automaticamente.
           </p>
-          {pagamento.qr_expires_at && (
+          {(pagamento.mp_expires_at || pagamento.qr_expires_at) && (
             <p className="text-[10px] text-amber-800">
-              QR válido até {new Date(pagamento.qr_expires_at).toLocaleString('pt-BR')} — cancelamento sem ônus em até
-              15 min (RF40.3).
+              QR válido até{' '}
+              {new Date((pagamento.mp_expires_at || pagamento.qr_expires_at) as string).toLocaleString('pt-BR')} —
+              cancelamento sem ônus em até 15 min (RF40.3).
             </p>
           )}
           {pagamento.pix_payload_hash && (
             <p className="text-[9px] text-gray-400 dark:text-slate-500 break-all">Hash Pix (rastreio): {pagamento.pix_payload_hash}</p>
           )}
-          {pagamento.pix_copia_e_cola && (
+          {(pagamento.mp_qr_code_base64 || pagamento.pix_copia_e_cola) && (
             <div className="flex justify-center bg-white rounded-xl p-3 border border-gray-200 dark:border-slate-700">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(pagamento.pix_copia_e_cola)}`}
+                src={
+                  pagamento.mp_qr_code_base64
+                    ? `data:image/png;base64,${pagamento.mp_qr_code_base64}`
+                    : `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(pagamento.pix_copia_e_cola as string)}`
+                }
                 alt="QR Code Pix"
                 width={220}
                 height={220}
@@ -375,15 +389,10 @@ export default function PagamentoEtapaPanel({
             >
               {copiou ? 'Copiado!' : 'Copiar código Pix'}
             </button>
-            <button
-              type="button"
-              disabled={processando}
-              onClick={confirmarSandbox}
-              className="flex-1 rounded-xl bg-emerald-600 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
-            >
-              {processando ? '…' : 'Já paguei (simular)'}
-            </button>
           </div>
+          <p className="text-[10px] text-center text-gray-500 dark:text-slate-400">
+            Conferindo pagamento automaticamente…
+          </p>
           {podeCancelarQr && (
             <button
               type="button"

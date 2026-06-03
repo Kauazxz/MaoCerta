@@ -122,6 +122,7 @@ export default function AdminInicioScreen() {
         {/* Atalhos auxiliares */}
         <section className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm divide-y divide-gray-100 dark:divide-slate-800">
           <ItemMenu href="/admin/financeiro" icone="💰" titulo="Financeiro" descricao="Comissões, escrow, repasses" />
+          <ItemMenu href="/admin/saques" icone="🏦" titulo="Saques de prestadores" descricao="Pagar Pix e debitar saldo" />
           <ItemMenu href="/admin/categorias" icone="🗂️" titulo="Categorias" descricao="Gerenciar catálogo (em breve)" disabled />
           <ItemMenu href="/admin/configuracoes" icone="⚙️" titulo="Configurações" descricao="Conta admin e suporte" />
         </section>

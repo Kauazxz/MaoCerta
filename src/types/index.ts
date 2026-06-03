@@ -145,6 +145,10 @@ export interface Pagamento {
   pix_txid: string | null;
   pix_payload_hash?: string | null;
   qr_expires_at?: string | null;
+  mp_payment_id?: string | null;
+  mp_qr_code_base64?: string | null;
+  mp_pix_copia_e_cola?: string | null;
+  mp_expires_at?: string | null;
   pago_em?: string | null;
   webhook_ref?: string | null;
   dispute_motivo: string | null;
