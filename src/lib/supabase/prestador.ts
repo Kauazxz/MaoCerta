@@ -118,11 +118,10 @@ export const prestadorService = {
     return (data as Saque[]) || []
   },
 
-  async solicitarSaque(userId: string, valor: number, observacao?: string) {
-    const { data, error } = await createClient().rpc('fn_wallet_solicitar_saque', {
+  async solicitarSaque(_userId: string, valor: number, observacao?: string) {
+    const { data, error } = await createClient().rpc('fn_solicitar_saque', {
       p_valor: valor,
-      p_metodo: 'pix',
-      p_observacao: observacao ?? '',
+      p_observacao: observacao ?? null,
     })
     if (error) throw error
     const row = data as { ok?: boolean; erro?: string; saque_id?: string }
@@ -132,6 +131,25 @@ export const prestadorService = {
       throw err
     }
     return { id: row?.saque_id }
+  },
+
+  async getChavePix(userId: string): Promise<{ chave: string | null; tipo: string | null }> {
+    const { data, error } = await createClient()
+      .from('profiles')
+      .select('chave_pix, tipo_chave_pix')
+      .eq('id', userId)
+      .maybeSingle()
+    if (error) throw error
+    const row = data as { chave_pix?: string | null; tipo_chave_pix?: string | null } | null
+    return { chave: row?.chave_pix ?? null, tipo: row?.tipo_chave_pix ?? null }
+  },
+
+  async salvarChavePix(userId: string, chave: string, tipo: string) {
+    const { error } = await createClient()
+      .from('profiles')
+      .update({ chave_pix: chave.trim(), tipo_chave_pix: tipo })
+      .eq('id', userId)
+    if (error) throw error
   },
 
   async cancelarSaque(id: string) {
