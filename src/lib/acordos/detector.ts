@@ -115,20 +115,42 @@ function extrairValor(texto: string): number | null {
   return null
 }
 
-function extrairDataHora(texto: string): string | null {
-  // Captura padrões básicos: "20/05", "20/05/2026", "às 14h", "às 14:30"
-  // Combina com data atual + horário detectado pra montar ISO
-  const hoje = new Date()
+// Dias da semana (0 = domingo) usados nos termos relativos
+const DIAS_SEMANA: Record<string, number> = {
+  domingo: 0,
+  'segunda': 1,
+  'segunda-feira': 1,
+  'terca': 2,
+  'terça': 2,
+  'terca-feira': 2,
+  'terça-feira': 2,
+  quarta: 3,
+  'quarta-feira': 3,
+  quinta: 4,
+  'quinta-feira': 4,
+  sexta: 5,
+  'sexta-feira': 5,
+  sabado: 6,
+  'sábado': 6,
+}
 
-  // Data DD/MM ou DD/MM/AAAA
-  const matchData = texto.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/)
+function extrairDataHora(texto: string): string | null {
+  // Captura padrões: "20/05", "20/05/2026", "amanha", "hoje", "depois de amanha",
+  // "proxima segunda", "sexta-feira", "às 14h", "às 14:30", "para agora".
+  // Combina com data atual + horario detectado pra montar ISO.
+  const hoje = new Date()
+  const textoNorm = texto.toLowerCase()
+
   let ano = hoje.getFullYear()
   let mes = hoje.getMonth() + 1
   let dia = hoje.getDate()
   let hora = 9
   let minuto = 0
   let temDado = false
+  let temHora = false
 
+  // 1) Data DD/MM ou DD/MM/AAAA (prioridade maxima quando explicita)
+  const matchData = texto.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/)
   if (matchData) {
     dia = Number(matchData[1])
     mes = Number(matchData[2])
@@ -137,6 +159,40 @@ function extrairDataHora(texto: string): string | null {
       if (ano < 100) ano += 2000
     }
     temDado = true
+  } else {
+    // 2) Termos relativos: "depois de amanha", "amanha", "hoje"
+    let deslocaDias: number | null = null
+    if (/\bdepois\s+de\s+amanh[ãa]\b/i.test(texto)) deslocaDias = 2
+    else if (/\bamanh[ãa]\b/i.test(texto)) deslocaDias = 1
+    else if (/\bhoje\b/i.test(texto) || /\bagora\b/i.test(texto) || /\bj[áa]\b/i.test(texto)) deslocaDias = 0
+
+    if (deslocaDias !== null) {
+      const alvo = new Date(hoje)
+      alvo.setDate(alvo.getDate() + deslocaDias)
+      dia = alvo.getDate()
+      mes = alvo.getMonth() + 1
+      ano = alvo.getFullYear()
+      temDado = true
+    } else {
+      // 3) Dia da semana: "proxima segunda", "sexta", "sabado", etc
+      const matchDiaSemana = textoNorm.match(
+        /\b(?:pr[óo]xim[ao]\s+)?(domingo|segunda(?:-feira)?|ter[çc]a(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|s[áa]bado)\b/,
+      )
+      if (matchDiaSemana) {
+        const alvoNum = DIAS_SEMANA[matchDiaSemana[1].replace('ç', 'c')]
+        if (typeof alvoNum === 'number') {
+          const atual = hoje.getDay()
+          let delta = (alvoNum - atual + 7) % 7
+          if (delta === 0) delta = 7 // "proxima sexta" sempre semana que vem
+          const alvo = new Date(hoje)
+          alvo.setDate(alvo.getDate() + delta)
+          dia = alvo.getDate()
+          mes = alvo.getMonth() + 1
+          ano = alvo.getFullYear()
+          temDado = true
+        }
+      }
+    }
   }
 
   // Hora "14h" ou "14h30" ou "14:30" (com "às" ou "as")
@@ -145,13 +201,22 @@ function extrairDataHora(texto: string): string | null {
     hora = Number(matchHora[1])
     minuto = matchHora[2] ? Number(matchHora[2]) : 0
     temDado = true
+    temHora = true
   } else {
     const matchHoraSimples = texto.match(/\b(\d{1,2})h(\d{2})?\b/i)
     if (matchHoraSimples) {
       hora = Number(matchHoraSimples[1])
       minuto = matchHoraSimples[2] ? Number(matchHoraSimples[2]) : 0
       temDado = true
+      temHora = true
     }
+  }
+
+  // "agora" / "ja" sem horario explicito: usa horario atual arredondado
+  if (!temHora && /\b(?:agora|j[áa])\b/i.test(texto)) {
+    hora = hoje.getHours()
+    minuto = hoje.getMinutes()
+    temDado = true
   }
 
   if (!temDado) return null
