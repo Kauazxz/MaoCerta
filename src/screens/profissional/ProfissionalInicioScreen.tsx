@@ -1,9 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { nomePlano } from '@/lib/plano-limites'
+import {
+  useSolicitacoesPrestador,
+  usePropostasPrestador,
+  useCarteiraPrestador,
+  useDemandasPublicas,
+} from '@/lib/realtime/hooks'
 import OnboardingChecklist from '@/components/onboarding/OnboardingChecklist'
 
 type Resumo = {
@@ -118,83 +124,90 @@ export default function ProfissionalInicioScreen() {
   const [carregando, setCarregando] = useState(true)
   const [resumo, setResumo] = useState<Resumo | null>(null)
   const [copiouId, setCopiouId] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function carregar() {
-      const supabase = createClient()
-      const { data: auth } = await supabase.auth.getUser()
-      const user = auth.user
+  const carregar = useCallback(async () => {
+    const supabase = createClient()
+    const { data: auth } = await supabase.auth.getUser()
+    const user = auth.user
 
-      if (!user) {
-        setResumo({ ...resumoVazio, nome: 'Profissional' })
-        setCarregando(false)
-        return
-      }
-
-      const [
-        perfilRes,
-        catRes,
-        servRes,
-        solPendRes,
-        solTotRes,
-        propRes,
-        demRes,
-        atendAtivosRes,
-        walletRes,
-        escrowRes,
-      ] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('nome, avatar_url, plano, cidade, bio')
-          .eq('id', user.id)
-          .maybeSingle(),
-        supabase.from('profissional_categorias').select('categoria_id', { count: 'exact', head: true }).eq('profissional_id', user.id),
-        supabase.from('servicos').select('id', { count: 'exact', head: true }).eq('profissional_id', user.id),
-        supabase
-          .from('solicitacoes')
-          .select('id', { count: 'exact', head: true })
-          .eq('profissional_id', user.id)
-          .eq('status', 'pendente'),
-        supabase.from('solicitacoes').select('id', { count: 'exact', head: true }).eq('profissional_id', user.id),
-        supabase.from('propostas').select('id', { count: 'exact', head: true }).eq('profissional_id', user.id),
-        supabase.from('demandas').select('id', { count: 'exact', head: true }).eq('status', 'aberta'),
-        supabase
-          .from('solicitacoes')
-          .select('id', { count: 'exact', head: true })
-          .eq('profissional_id', user.id)
-          .in('status', ['aceita', 'em_andamento']),
-        supabase.from('wallets').select('saldo').eq('user_id', user.id).maybeSingle(),
-        supabase
-          .from('pagamentos')
-          .select('valor_liquido_prestador')
-          .eq('profissional_id', user.id)
-          .eq('status', 'em_escrow'),
-      ])
-
-      const p = perfilRes.data
-      const escrowRows = (escrowRes.data as { valor_liquido_prestador: number }[] | null) || []
-      const valorEmEscrow = escrowRows.reduce((a, row) => a + Number(row.valor_liquido_prestador || 0), 0)
-      setResumo({
-        userId: user.id,
-        nome: p?.nome || (user.user_metadata as { nome?: string })?.nome || user.email?.split('@')[0] || 'Profissional',
-        avatarUrl: p?.avatar_url || null,
-        plano: (p?.plano as string) || 'free',
-        cidade: p?.cidade || null,
-        bio: p?.bio || null,
-        nCategorias: catRes.count ?? 0,
-        nServicos: servRes.count ?? 0,
-        nSolicitacoesPendentes: solPendRes.count ?? 0,
-        nSolicitacoesTotal: solTotRes.count ?? 0,
-        nPropostas: propRes.count ?? 0,
-        nDemandasAbertas: demRes.count ?? 0,
-        nAtendimentosAtivos: atendAtivosRes.count ?? 0,
-        saldoCarteira: Number(walletRes.data?.saldo ?? 0),
-        valorEmEscrow,
-      })
+    if (!user) {
+      setResumo({ ...resumoVazio, nome: 'Profissional' })
       setCarregando(false)
+      return
     }
-    carregar()
+    setUserId(user.id)
+
+    const [
+      perfilRes,
+      catRes,
+      servRes,
+      solPendRes,
+      solTotRes,
+      propRes,
+      demRes,
+      atendAtivosRes,
+      walletRes,
+      escrowRes,
+    ] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('nome, avatar_url, plano, cidade, bio')
+        .eq('id', user.id)
+        .maybeSingle(),
+      supabase.from('profissional_categorias').select('categoria_id', { count: 'exact', head: true }).eq('profissional_id', user.id),
+      supabase.from('servicos').select('id', { count: 'exact', head: true }).eq('profissional_id', user.id),
+      supabase
+        .from('solicitacoes')
+        .select('id', { count: 'exact', head: true })
+        .eq('profissional_id', user.id)
+        .eq('status', 'pendente'),
+      supabase.from('solicitacoes').select('id', { count: 'exact', head: true }).eq('profissional_id', user.id),
+      supabase.from('propostas').select('id', { count: 'exact', head: true }).eq('profissional_id', user.id),
+      supabase.from('demandas').select('id', { count: 'exact', head: true }).eq('status', 'aberta'),
+      supabase
+        .from('solicitacoes')
+        .select('id', { count: 'exact', head: true })
+        .eq('profissional_id', user.id)
+        .in('status', ['aceita', 'em_andamento']),
+      supabase.from('wallets').select('saldo').eq('user_id', user.id).maybeSingle(),
+      supabase
+        .from('pagamentos')
+        .select('valor_liquido_prestador')
+        .eq('profissional_id', user.id)
+        .eq('status', 'em_escrow'),
+    ])
+
+    const p = perfilRes.data
+    const escrowRows = (escrowRes.data as { valor_liquido_prestador: number }[] | null) || []
+    const valorEmEscrow = escrowRows.reduce((a, row) => a + Number(row.valor_liquido_prestador || 0), 0)
+    setResumo({
+      userId: user.id,
+      nome: p?.nome || (user.user_metadata as { nome?: string })?.nome || user.email?.split('@')[0] || 'Profissional',
+      avatarUrl: p?.avatar_url || null,
+      plano: (p?.plano as string) || 'free',
+      cidade: p?.cidade || null,
+      bio: p?.bio || null,
+      nCategorias: catRes.count ?? 0,
+      nServicos: servRes.count ?? 0,
+      nSolicitacoesPendentes: solPendRes.count ?? 0,
+      nSolicitacoesTotal: solTotRes.count ?? 0,
+      nPropostas: propRes.count ?? 0,
+      nDemandasAbertas: demRes.count ?? 0,
+      nAtendimentosAtivos: atendAtivosRes.count ?? 0,
+      saldoCarteira: Number(walletRes.data?.saldo ?? 0),
+      valorEmEscrow,
+    })
+    setCarregando(false)
   }, [])
+
+  useEffect(() => { void carregar() }, [carregar])
+
+  // Realtime: refaz contadores quando algo relevante muda
+  useSolicitacoesPrestador(userId, () => void carregar())
+  usePropostasPrestador(userId, () => void carregar())
+  useCarteiraPrestador(userId, () => void carregar())
+  useDemandasPublicas(() => void carregar())
 
   const r = resumo
   const d = r ?? resumoVazio

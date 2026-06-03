@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { iconeCategoria } from '@/lib/categorias-ui'
 import { formatarRelativoPt } from '@/lib/formatar-data'
+import { useDemandasCliente, useSolicitacoesCliente, usePropostasCliente } from '@/lib/realtime/hooks'
 import OnboardingChecklist from '@/components/onboarding/OnboardingChecklist'
 
 type Resumo = {
@@ -75,10 +76,16 @@ export default function ClienteInicioScreen() {
   const [historico, setHistorico] = useState<SolicitacaoItem[]>([])
   const [recomendados, setRecomendados] = useState<PrestadorRecomendado[]>([])
   const [categoriasMinhas, setCategoriasMinhas] = useState<CategoriaContratada[]>([])
+  const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
     carregar()
   }, [])
+
+  // Realtime: contadores e listas atualizam quando algo da minha conta muda
+  useDemandasCliente(userId, () => void carregar())
+  useSolicitacoesCliente(userId, () => void carregar())
+  usePropostasCliente(() => void carregar())
 
   async function carregar() {
     const supabase = createClient()
@@ -185,6 +192,7 @@ export default function ClienteInicioScreen() {
       recomendacoes = [...recomendacoes, ...fallback]
     }
 
+    setUserId(user.id)
     setResumo({
       userId: user.id,
       nome: p?.nome || (user.user_metadata as { nome?: string })?.nome || user.email?.split('@')[0] || 'Cliente',
