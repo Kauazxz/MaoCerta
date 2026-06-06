@@ -10,7 +10,8 @@ import { createServiceRoleClient } from '@/lib/supabase/admin'
  *
  * Roteamento:
  * - external_reference "plano:<id>" → atualiza pagamentos_plano + plano do usuario.
- * - external_reference "etapa:<id>" → libera comissao plataforma + escrow prestador.
+ * - external_reference "etapa:<id>" → libera comissao plataforma + escrow prestador (modelo antigo).
+ * - external_reference "cobranca:<id>" → marca cobranca paga no novo motor de atendimento.
  * - Fluxo antigo (etapa, Pix sandbox interno) → chama fn_financeiro_webhook_confirmar_pix.
  */
 
@@ -97,6 +98,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, ignorado: true, mp_status: mpStatus })
     }
     const { data: rpcData, error } = await admin.rpc('fn_pagamento_plano_confirmar', {
+      p_mp_payment_id: String(paymentId),
+    })
+    if (error) {
+      return NextResponse.json({ ok: false, erro: error.message }, { status: 500 })
+    }
+    return NextResponse.json(rpcData)
+  }
+
+  // COBRANCA do novo motor de atendimento (F1+)
+  if (externalReference.startsWith('cobranca:')) {
+    if (mpStatus !== 'approved') {
+      return NextResponse.json({ ok: true, ignorado: true, mp_status: mpStatus })
+    }
+    const cobrancaId = externalReference.slice('cobranca:'.length).trim()
+    if (!cobrancaId) {
+      return NextResponse.json({ ok: false, erro: 'cobranca_id_invalido' }, { status: 400 })
+    }
+    const { data: rpcData, error } = await admin.rpc('fn_marcar_cobranca_paga', {
+      p_cobranca_id: cobrancaId,
       p_mp_payment_id: String(paymentId),
     })
     if (error) {
