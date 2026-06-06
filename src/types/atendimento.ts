@@ -221,3 +221,45 @@ export interface AtendimentoCompleto {
   cobrancas: CobrancaAtendimento[]
   eventos: EventoAtendimento[]
 }
+
+export type StatusTermo =
+  | 'aguardando'
+  | 'aguardando_assinatura_cliente'
+  | 'assinado_cliente'
+  | 'assinado_ambos'
+  | 'confirmado'
+  | 'dispensado_por_admin'
+  | 'cancelado'
+
+export interface TermoFinal {
+  id: string
+  solicitacao_id: string
+  plano_id: string | null
+  criado_por_id: string
+  resumo_servico: string
+  valor_total: number | null
+  status: StatusTermo
+  confirmado_cliente: boolean
+  confirmado_cliente_em: string | null
+  confirmado_profissional: boolean
+  confirmado_profissional_em: string | null
+  dispensado_por_admin_at: string | null
+  dispensado_por_admin_id: string | null
+  dispensado_por_admin_motivo: string | null
+  html_relatorio: string | null
+  pdf_url: string | null
+  hash_relatorio: string | null
+  snapshot_atendimento: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AvaliacaoAtendimento {
+  id: string
+  atendimento_id: string
+  avaliador_id: string
+  avaliado_id: string
+  nota: number
+  comentario: string | null
+  created_at: string
+}

@@ -11,9 +11,10 @@ import CriarPlanoModal from './CriarPlanoModal'
 import CriarItemModal from './CriarItemModal'
 import CobrancaExtraModal from './CobrancaExtraModal'
 import FechamentoHorasModal from './FechamentoHorasModal'
+import TermoFinalPanel from './TermoFinalPanel'
 import type { AtendimentoCompleto, ItemPlano } from '@/types/atendimento'
 
-type Aba = 'conversa' | 'plano' | 'pagamentos' | 'historico'
+type Aba = 'conversa' | 'plano' | 'pagamentos' | 'historico' | 'termo'
 
 type Props = {
   atendimento: AtendimentoCompleto
@@ -114,7 +115,7 @@ export default function AtendimentoShell({
             : '○ desconectado'}
       </p>
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-1 grid grid-cols-4 gap-1 shadow border border-slate-200 dark:border-slate-800">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-1 grid grid-cols-5 gap-1 shadow border border-slate-200 dark:border-slate-800">
         <BotaoAba ativo={aba === 'conversa'} onClick={() => setAba('conversa')}>
           Conversa
         </BotaoAba>
@@ -139,6 +140,9 @@ export default function AtendimentoShell({
         >
           Hist.
         </BotaoAba>
+        <BotaoAba ativo={aba === 'termo'} onClick={() => setAba('termo')}>
+          Termo
+        </BotaoAba>
       </div>
 
       {aba === 'conversa' && (
@@ -155,6 +159,14 @@ export default function AtendimentoShell({
         <PagamentosAtendimentoPanel atendimento={atendimento} perfil={perfil} onAlterado={onRefresh} />
       )}
       {aba === 'historico' && <HistoricoAtendimentoPanel eventos={atendimento.eventos} />}
+      {aba === 'termo' && (
+        <TermoFinalPanel
+          atendimento={atendimento}
+          perfil={perfil}
+          solicitacaoId={solicitacaoId}
+          onAlterado={onRefresh}
+        />
+      )}
 
       {/* Modais profissional */}
       <CriarPlanoModal
