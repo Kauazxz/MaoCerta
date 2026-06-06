@@ -13,10 +13,14 @@ type Props = {
 export default function AtendimentoStatusCard({ atendimento }: Props) {
   const { plano, itens, cobrancas } = atendimento
 
-  const totalPrevisto = itens.reduce(
-    (acc, it) => acc + Number(it.valor_total_previsto ?? it.valor_unitario ?? 0),
-    0,
-  )
+  // Total previsto SO conta itens ativos. Cancelado/recusado nao soma -
+  // assim trocar uma proposta nao "duplica" o valor do atendimento.
+  const totalPrevisto = itens
+    .filter(it => !['cancelado', 'recusado'].includes(it.status))
+    .reduce(
+      (acc, it) => acc + Number(it.valor_total_previsto ?? it.valor_unitario ?? 0),
+      0,
+    )
   const totalPago = cobrancas
     .filter(c => c.status === 'paga' || c.status === 'retida' || c.status === 'liberada')
     .reduce((acc, c) => acc + Number(c.valor), 0)

@@ -183,6 +183,31 @@ export async function contestarItem(itemId: string, motivo: string): Promise<voi
   if (!r.ok) throw new Error(r.erro)
 }
 
+export async function solicitarExclusaoItem(itemId: string, motivo?: string | null): Promise<void> {
+  const { data, error } = await createClient().rpc('fn_solicitar_exclusao_item', {
+    p_item_id: itemId,
+    p_motivo: motivo ?? null,
+  })
+  if (error) throw error
+  const r = unwrap(data)
+  if (!r.ok) throw new Error(r.erro)
+}
+
+export async function responderExclusaoItem(
+  itemId: string,
+  aceitou: boolean,
+  motivo?: string | null,
+): Promise<void> {
+  const { data, error } = await createClient().rpc('fn_responder_exclusao_item', {
+    p_item_id: itemId,
+    p_aceitou: aceitou,
+    p_motivo: motivo ?? null,
+  })
+  if (error) throw error
+  const r = unwrap(data)
+  if (!r.ok) throw new Error(r.erro)
+}
+
 export async function tentarConcluirAtendimento(
   solicitacaoId: string,
 ): Promise<{ ok: boolean; erro?: string; pronto_para_termo?: boolean }> {

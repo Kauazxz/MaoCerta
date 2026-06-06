@@ -6,10 +6,11 @@ import type { AtendimentoCompleto } from '@/types/atendimento'
 type Props = {
   atendimento: AtendimentoCompleto
   perfil: 'cliente' | 'profissional'
+  meuId: string
   onAlterado: () => void
 }
 
-export default function PlanoAtendimentoPanel({ atendimento, perfil, onAlterado }: Props) {
+export default function PlanoAtendimentoPanel({ atendimento, perfil, meuId, onAlterado }: Props) {
   const { plano, itens } = atendimento
 
   if (!plano) {
@@ -45,7 +46,7 @@ export default function PlanoAtendimentoPanel({ atendimento, perfil, onAlterado 
     <ul className="space-y-3">
       {itens.map(item => (
         <li key={item.id}>
-          <CardItemPlano item={item} perfil={perfil} onAcao={onAlterado} />
+          <CardItemPlano item={item} perfil={perfil} meuId={meuId} onAcao={onAlterado} />
         </li>
       ))}
     </ul>

@@ -153,7 +153,12 @@ export default function AtendimentoShell({
         />
       )}
       {aba === 'plano' && (
-        <PlanoAtendimentoPanel atendimento={atendimento} perfil={perfil} onAlterado={onRefresh} />
+        <PlanoAtendimentoPanel
+          atendimento={atendimento}
+          perfil={perfil}
+          meuId={meuId}
+          onAlterado={onRefresh}
+        />
       )}
       {aba === 'pagamentos' && (
         <PagamentosAtendimentoPanel atendimento={atendimento} perfil={perfil} onAlterado={onRefresh} />

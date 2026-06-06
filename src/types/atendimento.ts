@@ -155,6 +155,9 @@ export interface ItemPlano {
   aceito_profissional_at: string | null
   confirmado_cliente_at: string | null
   confirmado_profissional_at: string | null
+  exclusao_solicitada_por: string | null
+  exclusao_solicitada_em: string | null
+  exclusao_motivo: string | null
   criado_por: string | null
   metadata: Record<string, unknown>
   created_at: string
