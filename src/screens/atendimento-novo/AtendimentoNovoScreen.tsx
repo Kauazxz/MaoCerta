@@ -71,10 +71,21 @@ export default function AtendimentoNovoScreen({ solicitacaoId, perfil }: Props) 
       <div className="-mt-6 relative z-10">
         {erro && (
           <div className="max-w-2xl mx-auto px-4">
-            <div className="rounded-2xl bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
-              {erro === 'sem_permissao'
-                ? 'Voce nao tem acesso a este atendimento.'
-                : `Erro: ${erro}`}
+            <div className="rounded-2xl bg-red-50 border border-red-200 px-3 py-3 text-xs text-red-700 space-y-1">
+              {erro === 'sem_permissao' ? (
+                <p>Voce nao tem acesso a este atendimento.</p>
+              ) : /fn_buscar_atendimento_completo|fn_atendimento|does not exist|relation .* does not exist|planos_atendimento/i.test(erro) ? (
+                <>
+                  <p className="font-bold">Novo motor ainda nao instalado no banco.</p>
+                  <p>
+                    Rode no Supabase (ordem): <code>054 → 055 → 056 → 057 → 058 → 060 → 059</code>.
+                    Apos rodar, recarregue esta pagina.
+                  </p>
+                  <p className="font-mono text-[10px] mt-1 break-all opacity-70">{erro}</p>
+                </>
+              ) : (
+                <p>Erro: {erro}</p>
+              )}
             </div>
           </div>
         )}
