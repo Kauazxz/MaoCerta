@@ -226,7 +226,7 @@ grant execute on function public.fn_atendimento_migrar_legado() to authenticated
 
 -- Comentario para o admin saber que existe.
 comment on function public.fn_atendimento_migrar_legado is
-  'Migra atendimentos do modelo antigo (etapas_atendimento) para o novo (planos + itens + cobrancas). Idempotente: so' atua em solicitacoes sem plano. Pode ser chamada por admin via Supabase SQL ou via UI futura.';
+  'Migra atendimentos do modelo antigo (etapas_atendimento) para o novo (planos + itens + cobrancas). Idempotente: atua apenas em solicitacoes sem plano. Pode ser chamada por admin via Supabase SQL ou via UI futura.';
 
 -- Roda automaticamente na aplicacao da migration (admin pode rerodar).
 do $$
