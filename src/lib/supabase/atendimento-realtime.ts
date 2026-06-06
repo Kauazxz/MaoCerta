@@ -6,34 +6,41 @@ import { buscarAtendimentoCompleto } from '@/lib/supabase/atendimento-plano'
 import type { AtendimentoCompleto } from '@/types/atendimento'
 
 type Status = 'inicial' | 'carregando' | 'pronto' | 'erro'
+type ConexaoStatus = 'desconectado' | 'conectando' | 'conectado'
 
 type Resultado = {
   atendimento: AtendimentoCompleto | null
   status: Status
   erro: string | null
   refresh: () => Promise<void>
-  conexao: 'desconectado' | 'conectando' | 'conectado'
+  conexao: ConexaoStatus
+}
+
+const DEBUG = typeof window !== 'undefined' && process.env.NODE_ENV !== 'production'
+const POLL_MS = 10_000
+
+function log(...args: unknown[]) {
+  if (DEBUG) console.log('[atend-rt]', ...args)
 }
 
 /**
- * Hook unico do atendimento novo. Faz UMA assinatura em todas as tabelas
- * relevantes filtradas por solicitacao_id, com cleanup garantido no unmount.
- *
- * Estrategia:
- *  - canal nomeado por solicitacao
- *  - debounce de 250ms para evitar refetch em rajada de eventos
- *  - reconexao automatica (Supabase ja faz, mas tratamos CHANNEL_ERROR)
- *  - apenas UM refetch em voo por vez
+ * Hook unico do atendimento novo:
+ *  - canal unico por solicitacao com server-side filter
+ *  - debounce de 250ms entre refetchs (rajada vira 1 chamada)
+ *  - polling lento de 10s como rede de seguranca caso o realtime
+ *    caia, perca conexao ou a publicacao nao esteja configurada
+ *  - cleanup garantido no unmount
  */
 export function useAtendimentoRealtime(solicitacaoId: string): Resultado {
   const [atendimento, setAtendimento] = useState<AtendimentoCompleto | null>(null)
   const [status, setStatus] = useState<Status>('inicial')
   const [erro, setErro] = useState<string | null>(null)
-  const [conexao, setConexao] = useState<Resultado['conexao']>('desconectado')
+  const [conexao, setConexao] = useState<ConexaoStatus>('desconectado')
 
   const refetchPendente = useRef(false)
   const refetchEmVoo = useRef(false)
   const timerDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const timerPoll = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const refresh = useCallback(async () => {
     if (refetchEmVoo.current) {
@@ -98,11 +105,15 @@ export function useAtendimentoRealtime(solicitacaoId: string): Resultado {
       channel.on(
         'postgres_changes' as never,
         { event: '*', schema: 'public', table, filter } as never,
-        () => refreshDebounced(),
+        (payload: unknown) => {
+          log('evento', table, payload)
+          refreshDebounced()
+        },
       )
     }
 
-    channel.subscribe((s: string) => {
+    channel.subscribe((s: string, err?: Error) => {
+      log('status canal', s, err || '')
       if (s === 'SUBSCRIBED') setConexao('conectado')
       else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT' || s === 'CLOSED') setConexao('desconectado')
       else setConexao('conectando')
@@ -112,6 +123,22 @@ export function useAtendimentoRealtime(solicitacaoId: string): Resultado {
       setConexao('desconectado')
       void supabase.removeChannel(channel)
       if (timerDebounce.current) clearTimeout(timerDebounce.current)
+    }
+  }, [solicitacaoId, refreshDebounced])
+
+  // Polling de seguranca - so' refaz se NAO tivermos refetch em voo.
+  // Custo: 1 query a cada 10s. Beneficio: garante que mesmo sem
+  // realtime configurado, a UI converge sem precisar F5.
+  useEffect(() => {
+    if (!solicitacaoId) return
+    timerPoll.current = setInterval(() => {
+      if (!refetchEmVoo.current) {
+        log('poll de seguranca')
+        refreshDebounced()
+      }
+    }, POLL_MS)
+    return () => {
+      if (timerPoll.current) clearInterval(timerPoll.current)
     }
   }, [solicitacaoId, refreshDebounced])
 
