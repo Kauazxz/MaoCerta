@@ -57,7 +57,7 @@ as $$
 declare
   v_pct numeric(5,2);
 begin
-  select coalesce(comissao_padrao_percentual, 10)::numeric(5,2)
+  select coalesce(comissao_percentual, 10)::numeric(5,2)
     into v_pct
     from public.config_financeiro
     where id = 1;
