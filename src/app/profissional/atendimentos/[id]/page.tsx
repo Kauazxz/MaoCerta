@@ -1,5 +1,5 @@
-import ProfissionalAtendimentoDetalheScreen from '@/screens/profissional/ProfissionalAtendimentoDetalheScreen'
+import SwitcherAtendimento from '@/components/atendimento-novo/SwitcherAtendimento'
 
 export default function Page({ params }: { params: { id: string } }) {
-  return <ProfissionalAtendimentoDetalheScreen id={params.id} />
+  return <SwitcherAtendimento solicitacaoId={params.id} perfil="profissional" />
 }

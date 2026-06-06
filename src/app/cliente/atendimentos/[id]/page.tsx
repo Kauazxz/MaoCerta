@@ -1,5 +1,5 @@
-import ClienteAtendimentoDetalheScreen from '@/screens/cliente/ClienteAtendimentoDetalheScreen'
+import SwitcherAtendimento from '@/components/atendimento-novo/SwitcherAtendimento'
 
 export default function Page({ params }: { params: { id: string } }) {
-  return <ClienteAtendimentoDetalheScreen id={params.id} />
+  return <SwitcherAtendimento solicitacaoId={params.id} perfil="cliente" />
 }

@@ -1,8 +1,14 @@
 # Plano de Reformulação do Motor de Atendimento — MaoCerta
 
-> Documento de planejamento. Nenhum código foi alterado ainda.  
-> Modelo antigo (etapas/acordos/agendamento_propostas) **permanece intocado** até a F4.
-> Atendimentos novos podem optar pelo novo motor; antigos seguem como hoje.
+> **Status: F1 + F2 + F3 + F4 entregues.** O novo motor está em produção,
+> coexiste com o antigo, e atendimentos antigos foram migrados automaticamente.
+>
+> | Fase | Commit | Migrations | Estado |
+> |---|---|---|---|
+> | F1 — Esqueleto + dados | `f657b5f` | 054, 055 | ✅ |
+> | F2 — Chat + realtime + modais | `d2452a8` | 056 | ✅ |
+> | F3 — Termo + avaliação + admin | `25579af` | 057, 058 | ✅ |
+> | F4 — Migração de legados + switcher | (este commit) | 059 | ✅ |
 
 ---
 
@@ -431,15 +437,26 @@ Decisão crítica: **não criar plano automático para atendimentos antigos na F
 
 ---
 
-## 12. F4 — migração planejada (apenas registrar agora)
+## 12. F4 — migração executada
 
-Script SQL que, para cada `solicitacao` com etapas:
-1. Cria `planos_atendimento` titulo='Legado' modelo='personalizado' status correspondente.
-2. Para cada `etapa`, cria `plano_itens_atendimento` mapeando tipo/status/valor.
-3. Para cada `pagamento`, cria `cobrancas_atendimento` linkando ao item.
-4. Insere evento `solicitacao_criada` + `migrado_para_novo_modelo` no histórico.
+Implementada na [migration 059](../supabase/migrations/059_atendimento_migrar_etapas_para_plano.sql) (`fn_atendimento_migrar_legado`):
 
-Rodável **incrementalmente** (idempotente) por flag de migração no metadata.
+1. **Idempotente** — só atua em solicitações que têm `etapas_atendimento` E NÃO têm `planos_atendimento`. Rerodar é seguro.
+2. **Cria plano** com `modelo='personalizado'`, status derivado da solicitação, `metadata.migrado_de='etapas_atendimento'`.
+3. **Cada etapa → item** com mapeamento explícito:
+   - `tipo`: vistoria/orcamento/execucao → vistoria/servico/servico; agendamento → servico; outros → etapa
+   - `status_etapa` → `status_item`: pendente→rascunho, agendada→aceito, em_progresso→em_execucao, finalizada_prestador→executado_pelo_profissional, concluida→concluido, cancelada→cancelado
+   - `cobravel + momento_cobranca` → `momento_pagamento`: antes_da_etapa→antes, somente_no_final/incluido_no_total_final→final, default→depois
+   - Preserva `data_inicio`, `data_conclusao`, `data_confirmacao_cliente/profissional`
+4. **Cada `pagamentos.etapa_id` → cobrança** vinculada ao item:
+   - Reaproveita `valor_bruto`, `comissao_percentual`, `valor_comissao`, `valor_liquido_prestador` originais
+   - Mapeia status: pago/em_escrow→paga, liberado→liberada, contestado→contestada, cancelado→cancelada
+   - Preserva `mp_payment_id`, `pix_copia_e_cola`, `pago_em`, `liberado_em`
+5. **Evento de auditoria** `migrado_para_novo_modelo` no histórico, visibilidade=admin.
+6. **Roda automaticamente** quando a migration 059 é aplicada (bloco `do $$ ... end $$` com `raise notice` da contagem).
+7. **Switcher inteligente** nas rotas principais: `/cliente/atendimentos/[id]` e `/profissional/atendimentos/[id]` agora detectam presença de plano e renderizam o motor novo ou o antigo automaticamente (sem mudar URL). Atendimentos migrados pela 059 caem direto no motor novo no próximo acesso.
+
+**Modelo antigo permanece funcional como fallback** para atendimentos sem etapas (estados muito iniciais) e para auditoria histórica. Nenhum arquivo do modelo antigo foi removido ou alterado.
 
 ---
 
@@ -497,22 +514,70 @@ Rodável **incrementalmente** (idempotente) por flag de migração no metadata.
 
 ---
 
-## 15. Próximas fases (referência)
+## 15. Status final — o que existe hoje
 
-| Fase | Conteúdo |
+### Fluxo end-to-end coberto
+- Cliente entra em `/cliente/atendimentos/[id]` → switcher detecta plano → motor novo.
+- Profissional cria plano (1 click), adiciona itens, envia propostas, cliente aceita.
+- Item com pagamento antes → cobrança auto-aceita → cliente gera Pix → MP confirma via webhook → comissão na `platform_balance`, líquido em escrow do profissional.
+- Item com pagamento depois → profissional inicia, executa, cliente confirma → cobrança nasce em aguardando_aceite → cliente aceita → Pix → liberação.
+- Cobrança extra a qualquer momento (modal); fechamento por hora calcula extras a partir do item base.
+- Detector de risco no chat (regex SQL) gera evento admin-only + aviso para os usuários.
+- Termo final com snapshot + SHA256 + HTML; ambas as partes assinam → atendimento conclui automaticamente.
+- Avaliação 1-5 estrelas (mútua) após conclusão.
+- Admin tem visão consolidada por atendimento + feed de riscos.
+
+### Ordem de aplicação das migrations (Supabase)
+```
+054 → 055 → 056 → 057 → 058 → 059
+```
+
+### Arquitetura entregue
+
+```
+Banco (6 migrations)
+├── 054 tabelas (planos/itens/cobrancas/eventos) + RLS write-via-RPC
+├── 055 17 RPCs do fluxo
+├── 056 trigger evento→mensagem-sistema + publicação realtime
+├── 057 termo + risco no chat + trigger detector
+├── 058 5 RPCs (gerar/assinar termo, dispensar, avaliar, listar riscos)
+└── 059 migração legados (idempotente, auto-roda)
+
+Frontend
+├── /api/pix/cobranca/{criar,status}  + branch cobranca: no webhook MP
+├── src/types/atendimento.ts (todos os enums + interfaces)
+├── src/lib/supabase/atendimento-{plano,cobrancas,eventos,termo,realtime}.ts
+├── src/components/atendimento-novo/
+│   ├── Shell + StatusCard + ProximaAcao
+│   ├── PlanoPanel + CardItem + CobrancaPanel + CardCobranca + HistoricoPanel
+│   ├── ChatNovo (com mensagens de sistema clicáveis)
+│   ├── TermoFinalPanel + AvaliacaoModal
+│   ├── 4 modais (CriarPlano, CriarItem, CobrancaExtra, FechamentoHoras)
+│   └── SwitcherAtendimento (decide motor por presença de plano)
+├── src/screens/atendimento-novo/AtendimentoNovoScreen
+├── src/screens/admin/AdminAtendimentoDetalheScreen + AdminAtendimentosRiscoScreen
+└── /admin/atendimentos/[id] + /admin/atendimentos/risco
+
+Rotas existentes mantidas como fallback
+└── /cliente|profissional/atendimentos/[id] → switcher escolhe motor novo ou antigo
+```
+
+### Cobertura dos cenários do prompt original
+| Cenário | Solução |
 |---|---|
-| **F2** | ChatAtendimentoNovo limpo, mensagens de sistema, modais (CriarProposta, CobrancaExtra, FechamentoHoras), `useAtendimentoRealtime`, próxima-ação contextual sofisticada |
-| **F3** | Termo final + assinatura eletrônica, avaliação pós-conclusão, detector de risco no chat, painel admin com visão de risco e moderação |
-| **F4** | Script de migração `solicitacao` antiga → novo modelo, esconder componentes antigos da UI principal, RLS reforçada, documentação final |
+| Babá por um dia, paga depois | item tipo `servico` momento_pagamento `depois` |
+| Babá 2h extras | botão **Fechamento por hora** calcula e cria cobrança extra |
+| Pedreiro vistoria antes | item tipo `vistoria` momento_pagamento `antes` → Pix automático |
+| Pedreiro 2 dias, paga ao final do dia | 2 itens tipo `diaria` momento_pagamento `depois` |
+| Sinal + restante final | item `sinal` antes + item `final` depois |
+| Por hora | item `hora` unidade `hora` |
+| Cobrança extra | modal + aceite obrigatório do cliente |
+| Contestação | botão no card do item / cobrança → status `contestado` + disputa |
+| Termo final | gerado pelo profissional, assinatura mútua, hash auditável |
+| Avaliação | 1-5 estrelas + comentário, mútua |
+| Risco "pix por fora" | regex SQL + evento admin-only + aviso compacto no chat |
 
----
-
-## Decisões pendentes que preciso de você
-
-1. **Comissão da plataforma** continua 10% também nas cobranças do novo modelo? (Sim por padrão, mas confirma.)
-2. **Item com `momento_pagamento='antes'`** gera cobrança automaticamente no aceite OU exige o profissional clicar "Gerar Pix"? (Recomendo automático = menos cliques.)
-3. **Cobrança extra** precisa de aceite do cliente antes do Pix? (Recomendo sim, conforme texto do prompt.)
-4. **Plano único ativo por solicitação** ou múltiplos planos coexistindo (ex: vistoria + execução)? (Recomendo único — cria novo após concluir o anterior.)
-5. **Termo final** assinatura eletrônica simples (checkbox "Li e confirmo") na F3 OU já agora? (Recomendo F3.)
-
-Quando você aprovar este plano (ou ajustar), começo a F1 — primeiro a migration 054, depois as RPCs, depois types, depois Supabase services, depois UI.
+### O que NÃO foi feito (intencional)
+- **Geração de PDF do termo** — temos HTML + hash, mas não geramos PDF físico. Posso adicionar quando precisar (precisaria de lib tipo `pdf-lib` ou serviço externo).
+- **Assinatura digital com certificado** — usamos aceite eletrônico simples (checkbox + timestamp + hash do snapshot). Auditável mas não ICP-Brasil.
+- **Migração automática roda em background** — hoje só roda quando a migration 059 é aplicada. Para atendimentos criados depois da 059 mas antes de F4 ser deployada, será necessária uma re-execução manual via SQL (`select public.fn_atendimento_migrar_legado();`) ou via página admin futura.
