@@ -87,7 +87,7 @@ begin
     'gerado_em', now()
   );
 
-  v_hash := encode(digest(v_snapshot::text, 'sha256'), 'hex');
+  v_hash := encode(sha256(convert_to(v_snapshot::text, 'UTF8')), 'hex');
 
   -- Total pago
   select coalesce(sum(valor), 0) into v_total
