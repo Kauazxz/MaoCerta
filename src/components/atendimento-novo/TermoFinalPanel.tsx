@@ -5,6 +5,7 @@ import {
   assinarTermoFinal,
   buscarMinhaAvaliacao,
   buscarTermoFinal,
+  encerrarPorInercia,
   gerarTermoFinal,
 } from '@/lib/supabase/atendimento-termo'
 import type { AtendimentoCompleto, AvaliacaoAtendimento, TermoFinal } from '@/types/atendimento'
@@ -254,6 +255,52 @@ export default function TermoFinalPanel({ atendimento, perfil, solicitacaoId, on
             </button>
           </>
         )}
+
+        {/* Inercia: profissional ja assinou, cliente nao. Mostra contagem e
+            libera botao apos 7 dias. */}
+        {!concluido && perfil === 'profissional' && termo.confirmado_profissional && !termo.confirmado_cliente && (() => {
+          const dias = Math.floor(
+            (Date.now() - new Date(termo.created_at).getTime()) / (1000 * 60 * 60 * 24),
+          )
+          const falta = Math.max(0, 7 - dias)
+          if (falta === 0) {
+            return (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 space-y-2 text-[11px] text-amber-900">
+                <p>
+                  Cliente nao assinou em {dias} dias. Voce pode encerrar o atendimento por
+                  inercia e liberar seu saldo.
+                </p>
+                <button
+                  type="button"
+                  disabled={processando}
+                  onClick={async () => {
+                    setProcessando(true)
+                    setErro(null)
+                    try {
+                      await encerrarPorInercia(termo.id)
+                      setAviso('Atendimento encerrado por inercia. Saldo liberado.')
+                      await recarregar()
+                      onAlterado()
+                    } catch (e) {
+                      setErro((e as Error).message)
+                    } finally {
+                      setProcessando(false)
+                    }
+                  }}
+                  className="w-full rounded-lg bg-amber-700 py-2 text-xs font-bold text-white disabled:opacity-50"
+                >
+                  {processando ? 'Encerrando...' : 'Encerrar por inercia'}
+                </button>
+              </div>
+            )
+          }
+          return (
+            <p className="rounded-lg bg-slate-50 dark:bg-slate-800 px-3 py-2 text-[11px] text-slate-600 dark:text-slate-300">
+              Cliente nao assinou ainda. Em {falta} {falta === 1 ? 'dia' : 'dias'} voce
+              podera encerrar por inercia e liberar seu saldo.
+            </p>
+          )
+        })()}
 
         {concluido && (
           <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-900 space-y-2">

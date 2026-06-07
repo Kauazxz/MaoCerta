@@ -38,6 +38,15 @@ export async function assinarTermoFinal(termoId: string): Promise<string> {
   return r.status
 }
 
+export async function encerrarPorInercia(termoId: string): Promise<void> {
+  const { data, error } = await createClient().rpc('fn_profissional_encerrar_por_inercia', {
+    p_termo_id: termoId,
+  })
+  if (error) throw error
+  const r = unwrap(data)
+  if (!r.ok) throw new Error(r.erro)
+}
+
 export async function adminDispensarTermo(termoId: string, motivo: string): Promise<void> {
   const { data, error } = await createClient().rpc('fn_admin_dispensar_termo', {
     p_termo_id: termoId,
