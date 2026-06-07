@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import AtendimentoStatusCard from './AtendimentoStatusCard'
 import ProximaAcaoAtendimento from './ProximaAcaoAtendimento'
 import PlanoAtendimentoPanel from './PlanoAtendimentoPanel'
@@ -44,6 +45,10 @@ export default function AtendimentoShell({
     [atendimento.itens],
   )
 
+  const concluido = atendimento.plano?.status === 'concluido'
+  const linkSaida =
+    perfil === 'cliente' ? '/cliente/atendimentos' : '/profissional/atendimentos'
+
   function aplicarDeeplink(link: Record<string, unknown>) {
     if (link.cobranca_id) setAba('pagamentos')
     else if (link.item_id || link.plano_id) setAba('plano')
@@ -52,6 +57,28 @@ export default function AtendimentoShell({
 
   return (
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-24 space-y-4">
+      {concluido && (
+        <section className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-slate-900 p-4 shadow-sm space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+            Atendimento concluido
+          </p>
+          <p className="text-sm font-bold text-emerald-900 dark:text-emerald-200">
+            Tudo certo por aqui ✓
+          </p>
+          <p className="text-[11px] text-emerald-800 dark:text-emerald-300 leading-relaxed">
+            {perfil === 'cliente'
+              ? 'Termo assinado e avaliacao registrada. Voce ja pode voltar para a lista de atendimentos.'
+              : 'O cliente concluiu o atendimento. Voce ja pode voltar para a lista.'}
+          </p>
+          <Link
+            href={linkSaida}
+            className="block w-full text-center rounded-xl bg-emerald-700 py-2.5 text-sm font-bold text-white hover:bg-emerald-800"
+          >
+            Voltar para meus atendimentos
+          </Link>
+        </section>
+      )}
+
       <AtendimentoStatusCard atendimento={atendimento} />
       <ProximaAcaoAtendimento
         atendimento={atendimento}

@@ -50,6 +50,14 @@ export default function TermoFinalPanel({ atendimento, perfil, solicitacaoId, on
     void recarregar()
   }, [recarregar])
 
+  // Re-puxa termo + avaliacao toda vez que o atendimento receber novos
+  // eventos no realtime (ex: outro lado assinou). Isso garante que a
+  // tela do profissional fica em sincronia com a do cliente sem F5.
+  useEffect(() => {
+    void recarregar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [atendimento.eventos.length, atendimento.plano?.status])
+
   const itensObrigatoriosAbertos = atendimento.itens.filter(
     i => i.obrigatorio && !['concluido', 'cancelado', 'confirmado_pelo_cliente'].includes(i.status),
   )
