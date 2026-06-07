@@ -76,6 +76,31 @@ export async function gerarPixCobranca(cobrancaId: string): Promise<{
   }
 }
 
+/**
+ * Forca o servidor a consultar o Mercado Pago e, se aprovado, confirmar
+ * a cobranca via fn_marcar_cobranca_paga - mesmo que o webhook nao tenha
+ * chegado. Idempotente.
+ */
+export async function conferirPagamentoNoMP(
+  cobrancaId: string,
+): Promise<{ aprovado: boolean; mensagem?: string; mp_status?: string }> {
+  const resp = await fetch('/api/pix/cobranca/conferir-mp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cobranca_id: cobrancaId }),
+  })
+  const data = await resp.json().catch(() => ({}))
+  if (!resp.ok || data?.ok === false) {
+    throw new Error(data?.erro || `conferir_falhou_${resp.status}`)
+  }
+  if (data.ja_paga) return { aprovado: true }
+  return {
+    aprovado: !!data.aprovado,
+    mensagem: data.mensagem,
+    mp_status: data.mp_status,
+  }
+}
+
 export async function consultarStatusPixCobranca(cobrancaId: string): Promise<CobrancaAtendimento | null> {
   const resp = await fetch(`/api/pix/cobranca/status?id=${encodeURIComponent(cobrancaId)}`, {
     cache: 'no-store',

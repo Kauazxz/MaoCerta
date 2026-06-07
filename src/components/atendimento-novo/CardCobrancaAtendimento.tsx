@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   aceitarCobranca,
+  conferirPagamentoNoMP,
   consultarStatusPixCobranca,
   gerarPixCobranca,
   recusarCobranca,
@@ -50,8 +51,55 @@ export default function CardCobrancaAtendimento({ cobranca, perfil, onAlterado }
   const [erro, setErro] = useState<string | null>(null)
   const [copiou, setCopiou] = useState(false)
   const [qrLocal, setQrLocal] = useState<{ base64: string | null; copia: string | null } | null>(null)
+  const [conferindo, setConferindo] = useState(false)
+  const [avisoConfere, setAvisoConfere] = useState<string | null>(null)
+  const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const cls = STATUS_CLS[cobranca.status] || 'bg-slate-100 text-slate-700 border-slate-200'
+  const aguardandoPix =
+    cobranca.status === 'pix_gerado' || cobranca.status === 'aguardando_pagamento'
+
+  async function conferirPagamento(silencioso = false) {
+    if (!aguardandoPix) return
+    if (!silencioso) setConferindo(true)
+    if (!silencioso) setAvisoConfere(null)
+    try {
+      const r = await conferirPagamentoNoMP(cobranca.id)
+      if (r.aprovado) {
+        setAvisoConfere('Pagamento confirmado!')
+        onAlterado()
+      } else if (!silencioso) {
+        setAvisoConfere(
+          r.mensagem ||
+            `Mercado Pago ainda nao confirmou (status: ${r.mp_status || 'desconhecido'}).`,
+        )
+      }
+    } catch (e) {
+      if (!silencioso) setAvisoConfere((e as Error).message)
+    } finally {
+      if (!silencioso) setConferindo(false)
+    }
+  }
+
+  // Auto-check periodico (15s) enquanto a cobranca esta esperando o Pix.
+  // Para o usuario que acabou de pagar e ficou na tela, a confirmacao
+  // entra sozinha sem precisar clicar nada.
+  useEffect(() => {
+    if (!aguardandoPix) {
+      if (autoTimer.current) {
+        clearInterval(autoTimer.current)
+        autoTimer.current = null
+      }
+      return
+    }
+    autoTimer.current = setInterval(() => {
+      void conferirPagamento(true)
+    }, 15_000)
+    return () => {
+      if (autoTimer.current) clearInterval(autoTimer.current)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aguardandoPix, cobranca.id])
 
   async function executar(fn: () => Promise<unknown>) {
     setProcessando(true)
@@ -175,22 +223,40 @@ export default function CardCobrancaAtendimento({ cobranca, perfil, onAlterado }
               <code className="text-[10px] leading-tight text-slate-700 break-all">{qrCopia}</code>
             </div>
           )}
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2">
             <button
               type="button"
-              onClick={copiar}
-              className="flex-1 rounded-xl border border-violet-300 bg-white py-2 text-xs font-bold text-violet-800"
+              onClick={() => void conferirPagamento(false)}
+              disabled={conferindo}
+              className="w-full rounded-xl bg-emerald-700 py-2.5 text-sm font-bold text-white disabled:opacity-50"
             >
-              {copiou ? 'Copiado!' : 'Copiar codigo Pix'}
+              {conferindo ? 'Verificando...' : 'Ja paguei - verificar agora'}
             </button>
-            <button
-              type="button"
-              onClick={refrescarStatus}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
-            >
-              Atualizar
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={copiar}
+                className="flex-1 rounded-xl border border-violet-300 bg-white py-2 text-xs font-bold text-violet-800"
+              >
+                {copiou ? 'Copiado!' : 'Copiar codigo Pix'}
+              </button>
+              <button
+                type="button"
+                onClick={refrescarStatus}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+              >
+                Atualizar
+              </button>
+            </div>
           </div>
+          {avisoConfere && (
+            <p className="text-[11px] text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5">
+              {avisoConfere}
+            </p>
+          )}
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center">
+            Confirmacao automatica a cada 15s
+          </p>
         </div>
       )}
 
