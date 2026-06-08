@@ -66,16 +66,19 @@ export default function AvaliarClienteCard({
       setEnviando(false)
       return
     }
-    const { error } = await supabase.from('avaliacoes').insert({
-      atendimento_id: atendimentoId,
-      avaliador_id: user.id,
-      avaliado_id: clienteId,
-      nota,
-      comentario: comentario.trim() || null,
+    const { data, error } = await supabase.rpc('fn_avaliar_atendimento_novo', {
+      p_solicitacao_id: atendimentoId,
+      p_nota: nota,
+      p_comentario: comentario.trim() || null,
     })
     setEnviando(false)
     if (error) {
       setErro(error.message)
+      return
+    }
+    const res = data as { ok?: boolean; erro?: string } | null
+    if (!res?.ok) {
+      setErro(res?.erro ?? 'Não foi possível enviar a avaliação.')
       return
     }
     setModo('ok')

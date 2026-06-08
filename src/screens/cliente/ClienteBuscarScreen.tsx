@@ -1,7 +1,8 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useReputacaoBusca } from '@/lib/realtime/hooks'
 import { iconeCategoria } from '@/lib/categorias-ui'
 import PerfilModal from '@/screens/perfil/PerfilModal'
 import CidadeEstadoSelect from '@/components/CidadeEstadoSelect'
@@ -80,11 +81,7 @@ export default function ClienteBuscarScreen() {
   const [perfilAberto, setPerfilAberto] = useState<string | null>(null)
   const [solicitarPara, setSolicitarPara] = useState<Prestador | null>(null)
 
-  useEffect(() => {
-    carregar()
-  }, [])
-
-  async function carregar() {
+  const carregar = useCallback(async () => {
     setCarregando(true)
     setErro(null)
     const supabase = createClient()
@@ -111,7 +108,7 @@ export default function ClienteBuscarScreen() {
         .eq('tipo', 'profissional')
         .order('created_at', { ascending: false })
         .limit(150),
-      supabase.from('avaliacoes').select('avaliado_id, nota'),
+      supabase.from('avaliacoes').select('avaliado_id, nota, nota_qualidade, nota_prazo, nota_comunicacao').eq('moderacao_oculto', false),
       supabase.from('solicitacoes').select('profissional_id').eq('status', 'concluida'),
       user
         ? supabase.from('bloqueios').select('bloqueado_id').eq('bloqueador_id', user.id)
@@ -125,9 +122,13 @@ export default function ClienteBuscarScreen() {
     type PrestadorRaw = Omit<Prestador, 'notaMedia' | 'qtdAvaliacoes' | 'atendimentosConcluidos'>
     const rawList = ((prestRes.data as unknown as PrestadorRaw[]) || []).filter((p) => p.id !== user?.id)
 
+    type AvalRow = { avaliado_id: string; nota: number; nota_qualidade?: number | null; nota_prazo?: number | null; nota_comunicacao?: number | null }
     const notasPorId: Record<string, number[]> = {}
-    for (const a of (avalRes.data as { avaliado_id: string; nota: number }[]) || []) {
-      ;(notasPorId[a.avaliado_id] ||= []).push(Number(a.nota))
+    for (const a of (avalRes.data as AvalRow[]) || []) {
+      const efetiva = (
+        Number(a.nota_qualidade ?? a.nota) + Number(a.nota_prazo ?? a.nota) + Number(a.nota_comunicacao ?? a.nota)
+      ) / 3
+      ;(notasPorId[a.avaliado_id] ||= []).push(efetiva)
     }
 
     const atendPorId: Record<string, number> = {}
@@ -169,7 +170,13 @@ export default function ClienteBuscarScreen() {
     setPrestadores(lista)
     setCategoriasPopulares(top)
     setCarregando(false)
-  }
+  }, [])
+
+  useEffect(() => {
+    void carregar()
+  }, [carregar])
+
+  useReputacaoBusca(carregar)
 
   const temFiltroAtivo = !!(busca.trim() || filtroCategoria || filtroEstado || filtroCidade)
 

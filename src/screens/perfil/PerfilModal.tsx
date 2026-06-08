@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { iconeCategoria } from '@/lib/categorias-ui'
+import { useAppRealtime } from '@/components/providers/AppRealtimeProvider'
+import { calcularNotaEfetiva } from '@/lib/supabase/reputacao'
 
 type Perfil = {
   id: string
@@ -36,6 +38,7 @@ function pegarIniciais(nome: string) {
 }
 
 export default function PerfilModal({ perfilId, aberto, onFechar, rotulo = 'Perfil', mostrarAcoes }: Props) {
+  const { ticks } = useAppRealtime()
   const [perfil, setPerfil] = useState<Perfil | null>(null)
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -90,8 +93,9 @@ export default function PerfilModal({ perfilId, aberto, onFechar, rotulo = 'Perf
           .maybeSingle(),
         supabase
           .from('avaliacoes')
-          .select('nota')
-          .eq('avaliado_id', perfilId),
+          .select('nota, nota_qualidade, nota_prazo, nota_comunicacao')
+          .eq('avaliado_id', perfilId)
+          .eq('moderacao_oculto', false),
         supabase
           .from('solicitacoes')
           .select('id', { count: 'exact', head: true })
@@ -115,8 +119,9 @@ export default function PerfilModal({ perfilId, aberto, onFechar, rotulo = 'Perf
           .eq('profissional_id', perfilId),
         supabase
           .from('avaliacoes')
-          .select('id, nota, comentario, created_at, avaliador:avaliador_id ( nome )')
+          .select('id, nota, nota_qualidade, nota_prazo, nota_comunicacao, comentario, created_at, avaliador:avaliador_id ( nome )')
           .eq('avaliado_id', perfilId)
+          .eq('moderacao_oculto', false)
           .not('comentario', 'is', null)
           .order('created_at', { ascending: false })
           .limit(20),
@@ -132,9 +137,10 @@ export default function PerfilModal({ perfilId, aberto, onFechar, rotulo = 'Perf
         setPerfil(perfilRes.data as Perfil)
       }
 
-      const notas = (avalRes.data as { nota: number }[] | null) || []
+      type AvalNota = { nota: number; nota_qualidade?: number | null; nota_prazo?: number | null; nota_comunicacao?: number | null }
+      const notas = (avalRes.data as AvalNota[] | null) || []
       if (notas.length > 0) {
-        const soma = notas.reduce((acc, a) => acc + Number(a.nota), 0)
+        const soma = notas.reduce((acc, a) => acc + calcularNotaEfetiva(a), 0)
         setNotaMedia(soma / notas.length)
       }
       setQtdAvaliacoes(notas.length)
@@ -172,7 +178,7 @@ export default function PerfilModal({ perfilId, aberto, onFechar, rotulo = 'Perf
     return () => {
       cancelado = true
     }
-  }, [perfilId, aberto])
+  }, [perfilId, aberto, ticks.avaliacoes, ticks.solicitacoes])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {

@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import NotaAvaliacaoBadge from '@/components/reputacao/NotaAvaliacaoBadge'
+import { useNotaReputacao } from '@/hooks/useNotaReputacao'
 
 type Profile = {
   nome: string
@@ -31,6 +33,12 @@ const itens = [
     icone: '💳',
     titulo: 'Plano',
     descricao: 'Gerenciar assinatura e benefícios',
+  },
+  {
+    href: '/cliente/configuracoes/reputacao',
+    icone: '⭐',
+    titulo: 'Reputação',
+    descricao: 'Avaliações dos prestadores',
   },
   {
     href: '/cliente/financeiro',
@@ -64,6 +72,8 @@ function pegarIniciais(nome: string) {
 export default function ClienteConfiguracoesScreen() {
   const router = useRouter()
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
+  const { notaMedia, totalAvaliacoes, carregando: carregandoNota } = useNotaReputacao(userId)
 
   useEffect(() => {
     async function carregar() {
@@ -71,6 +81,7 @@ export default function ClienteConfiguracoesScreen() {
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
+        setUserId(null)
         setProfile({
           nome: 'Visitante Demo',
           email: 'demo@maocerta.com',
@@ -80,6 +91,8 @@ export default function ClienteConfiguracoesScreen() {
         })
         return
       }
+
+      setUserId(user.id)
 
       const { data } = await supabase
         .from('profiles')
@@ -140,7 +153,12 @@ export default function ClienteConfiguracoesScreen() {
             </div>
             <div className="text-right">
               <p className="text-gray-400 dark:text-slate-500 text-[10px] font-medium uppercase tracking-wider">Avaliação</p>
-              <p className="font-bold text-amber-500">— ⭐</p>
+              <NotaAvaliacaoBadge
+                notaMedia={notaMedia}
+                totalAvaliacoes={totalAvaliacoes}
+                carregando={carregandoNota}
+                compacto
+              />
             </div>
           </div>
         </section>

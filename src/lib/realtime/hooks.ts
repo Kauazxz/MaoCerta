@@ -88,3 +88,16 @@ export function useCarteiraPrestador(_id: string | null, refetch: Refetch) {
   const { ticks } = useAppRealtime()
   useRefetchOnTick(ticks.wallet, refetch)
 }
+export function useAvaliacoesReputacao(_userId: string | null, refetch: Refetch) {
+  const { ticks } = useAppRealtime()
+  useRefetchOnTick(ticks.avaliacoes, refetch)
+}
+export function useSolicitacoesReputacao(refetch: Refetch) {
+  const { ticks } = useAppRealtime()
+  useRefetchOnTick(ticks.solicitacoes, refetch)
+}
+export function useReputacaoBusca(refetch: Refetch) {
+  const { ticks } = useAppRealtime()
+  useRefetchOnTick(ticks.avaliacoes, refetch)
+  useRefetchOnTick(ticks.solicitacoes, refetch)
+}

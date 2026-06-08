@@ -39,11 +39,12 @@ type Ticks = {
   etapas: number
   pagamentos: number
   wallet: number
+  avaliacoes: number
 }
 
 const TICKS_ZERO: Ticks = {
   demandas: 0, propostas: 0, solicitacoes: 0, notificacoes: 0,
-  documentos: 0, etapas: 0, pagamentos: 0, wallet: 0,
+  documentos: 0, etapas: 0, pagamentos: 0, wallet: 0, avaliacoes: 0,
 }
 
 type Toast = {
@@ -249,6 +250,14 @@ export function AppRealtimeProvider({
       chWallet = bind(`app:wallet:${userId}`, 'wallet_transactions', `user_id=eq.${userId}`, () => bump('wallet'))
     }
 
+    // -- Avaliacoes: reputacao propria + perfis publicos (busca, modal, admin)
+    const chAvaliacoes = bind(
+      `app:avaliacoes:${userId}`,
+      'avaliacoes',
+      undefined,
+      () => bump('avaliacoes'),
+    )
+
     return () => {
       log('removendo canais')
       subscribedRef.current = false
@@ -258,6 +267,7 @@ export function AppRealtimeProvider({
       void supabase.removeChannel(chSolicitacoes)
       void supabase.removeChannel(chDocumentos)
       if (chWallet) void supabase.removeChannel(chWallet)
+      void supabase.removeChannel(chAvaliacoes)
     }
   }, [userId, papel, bump, pushToast])
 

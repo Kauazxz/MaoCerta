@@ -1,54 +1,69 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import CabecalhoAjuste from '@/screens/configuracoes/CabecalhoAjuste'
+import { useReputacao } from '@/hooks/useReputacao'
+import { createClient } from '@/lib/supabase/client'
 
-type Avaliacao = {
-  id: string
-  cliente: string
-  servico: string
-  nota: number
-  comentario: string
-  data: string
-}
-
-const AVALIACOES: Avaliacao[] = []
-
-const METRICAS = {
-  notaMedia: 0,
-  totalAvaliacoes: 0,
-  taxaResposta: 0,
-  servicosConcluidos: 0,
+function formatarData(iso: string) {
+  try {
+    return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+  } catch {
+    return iso
+  }
 }
 
 export default function ReputacaoProfissionalScreen() {
-  const semHistorico = METRICAS.totalAvaliacoes === 0
+  const [userId, setUserId] = useState<string | null>(null)
+  const { dados, carregando, erro } = useReputacao(userId)
+
+  useEffect(() => {
+    const supabase = createClient()
+    void supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null))
+  }, [])
+
+  const metricas = {
+    notaMedia: dados?.notaMedia ?? 0,
+    totalAvaliacoes: dados?.totalAvaliacoes ?? 0,
+    taxaResposta: dados?.taxaSecundaria ?? 0,
+    servicosConcluidos: dados?.concluidos ?? 0,
+  }
+  const avaliacoes = dados?.avaliacoes ?? []
+  const semHistorico = metricas.totalAvaliacoes === 0
 
   return (
     <main className="min-h-screen pb-10">
       <CabecalhoAjuste titulo="Reputação" subtitulo="Como os clientes te avaliam" voltarHref="/profissional/configuracoes" tema="prestador" />
       <div className="max-w-lg mx-auto px-4 -mt-6 space-y-4 relative z-10">
 
+      {carregando && (
+        <p className="text-center text-sm text-gray-500 dark:text-slate-400 py-4">Carregando reputação…</p>
+      )}
+      {erro && !carregando && (
+        <p className="text-center text-sm text-red-600 dark:text-red-400 py-4">{erro}</p>
+      )}
+
       <section className="bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 rounded-3xl p-5 text-white">
         <div className="flex items-end gap-2">
-          <p className="text-5xl font-bold">{METRICAS.notaMedia.toFixed(1)}</p>
+          <p className="text-5xl font-bold">{metricas.notaMedia.toFixed(1)}</p>
           <p className="text-white/80 text-sm pb-2">/ 5,0</p>
         </div>
         <p className="text-white/80 text-sm mt-1">
-          Baseado em {METRICAS.totalAvaliacoes} avaliação{METRICAS.totalAvaliacoes === 1 ? '' : 'ões'} de clientes
+          Baseado em {metricas.totalAvaliacoes} avaliação{metricas.totalAvaliacoes === 1 ? '' : 'ões'} de clientes
         </p>
       </section>
 
       <section className="grid grid-cols-2 gap-3">
         <CardMetrica
           titulo="Serviços concluídos"
-          valor={METRICAS.servicosConcluidos.toString()}
+          valor={metricas.servicosConcluidos.toString()}
           dica="Atendimentos finalizados sem disputa"
         />
         <CardMetrica
           titulo="Taxa de resposta"
-          valor={`${METRICAS.taxaResposta}%`}
+          valor={`${metricas.taxaResposta}%`}
           dica="Quanto maior, mais visível na busca"
-          alerta={METRICAS.taxaResposta < 70}
+          alerta={metricas.taxaResposta < 70}
         />
       </section>
 
@@ -67,14 +82,14 @@ export default function ReputacaoProfissionalScreen() {
           </div>
         ) : (
           <ul className="space-y-3">
-            {AVALIACOES.map(av => (
+            {avaliacoes.map((av) => (
               <li key={av.id} className="border border-gray-100 dark:border-slate-800 rounded-2xl p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-semibold text-sm text-gray-900 dark:text-slate-100">{av.cliente}</p>
-                    <p className="text-[11px] text-gray-400 dark:text-slate-500">{av.servico} · {av.data}</p>
+                    <p className="font-semibold text-sm text-gray-900 dark:text-slate-100">{av.avaliador_nome}</p>
+                    <p className="text-[11px] text-gray-400 dark:text-slate-500">{av.servico} · {formatarData(av.created_at)}</p>
                   </div>
-                  <span className="text-amber-500 font-bold text-sm">{av.nota.toFixed(1)} ⭐</span>
+                  <span className="text-amber-500 font-bold text-sm">{Number(av.nota).toFixed(1)} ⭐</span>
                 </div>
                 <p className="text-sm text-gray-700 dark:text-slate-300">{av.comentario}</p>
               </li>
