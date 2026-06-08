@@ -53,6 +53,12 @@ const itens = [
     descricao: '2FA, bloqueios e dados',
   },
   {
+    href: '/cliente/configuracoes/denuncias',
+    icone: '🚩',
+    titulo: 'Minhas denúncias',
+    descricao: 'Acompanhe relatos e fale com a equipe',
+  },
+  {
     href: '/cliente/configuracoes/suporte',
     icone: '❓',
     titulo: 'Suporte',

@@ -259,11 +259,9 @@ export function AppRealtimeProvider({
       () => bump('avaliacoes'),
     )
 
-    // -- Denuncias (admin: painel e contadores)
-    let chDenuncias: ReturnType<typeof supabase.channel> | null = null
-    if (papel === 'administrador') {
-      chDenuncias = bind(`app:denuncias:${userId}`, 'denuncias', undefined, () => bump('denuncias'))
-    }
+    // -- Denuncias + mensagens (admin e denunciante)
+    const chDenuncias = bind(`app:denuncias:${userId}`, 'denuncias', undefined, () => bump('denuncias'))
+    const chDenunciasMsg = bind(`app:denuncias-msg:${userId}`, 'denuncias_mensagens', undefined, () => bump('denuncias'))
 
     return () => {
       log('removendo canais')
@@ -275,7 +273,8 @@ export function AppRealtimeProvider({
       void supabase.removeChannel(chDocumentos)
       if (chWallet) void supabase.removeChannel(chWallet)
       void supabase.removeChannel(chAvaliacoes)
-      if (chDenuncias) void supabase.removeChannel(chDenuncias)
+      void supabase.removeChannel(chDenuncias)
+      void supabase.removeChannel(chDenunciasMsg)
     }
   }, [userId, papel, bump, pushToast])
 
