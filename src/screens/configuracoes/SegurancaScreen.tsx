@@ -12,6 +12,12 @@ type Props = {
   tema?: 'cliente' | 'prestador' | 'admin'
 }
 
+const card =
+  'bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden'
+
+const row =
+  'w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/70 text-left transition-colors'
+
 export default function SegurancaScreen({
   voltarHref,
   perfilToggleLabel = 'Perfil público',
@@ -29,7 +35,7 @@ export default function SegurancaScreen({
       <CabecalhoAjuste titulo="Privacidade e Segurança" subtitulo="Proteja sua conta e seus dados" voltarHref={voltarHref} tema={tema} />
       <div className="max-w-lg mx-auto px-4 -mt-6 space-y-4 relative z-10">
 
-      <section className="bg-white dark:bg-slate-900 rounded-2xl divide-y divide-gray-100">
+      <section className={`${card} divide-y divide-gray-100 dark:divide-slate-800`}>
         <Toggle
           icone="🔐"
           titulo="Autenticação em 2 fatores"
@@ -55,28 +61,26 @@ export default function SegurancaScreen({
         )}
       </section>
 
-      <section className="bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
+      <section className={card}>
         <button
           onClick={() => setMostrarTrocaSenha(v => !v)}
-          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-slate-800 dark:bg-slate-800"
+          className={row}
         >
-          <div className="flex items-center gap-3">
-            <span className="text-lg">🔑</span>
-            <div className="text-left">
-              <p className="font-semibold text-sm text-gray-900 dark:text-slate-100">Alterar senha</p>
-              <p className="text-xs text-gray-500 dark:text-slate-400">Use uma senha forte e única</p>
-            </div>
+          <span className="text-lg shrink-0">🔑</span>
+          <div className="flex-1 min-w-0 text-left">
+            <p className="font-semibold text-sm text-gray-900 dark:text-slate-100">Alterar senha</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400">Use uma senha forte e única</p>
           </div>
-          <span className={`text-gray-300 text-lg transition-transform ${mostrarTrocaSenha ? 'rotate-90' : ''}`}>›</span>
+          <span className={`text-gray-300 dark:text-slate-600 text-lg shrink-0 transition-transform ${mostrarTrocaSenha ? 'rotate-90' : ''}`}>›</span>
         </button>
         {mostrarTrocaSenha && (
-          <div className="p-4 pt-0">
+          <div className="px-4 pb-4">
             <FormularioSenha />
           </div>
         )}
       </section>
 
-      <section className="bg-white dark:bg-slate-900 rounded-2xl divide-y divide-gray-100">
+      <section className={`${card} divide-y divide-gray-100 dark:divide-slate-800`}>
         <ItemAcao
           icone="🚫"
           titulo="Usuários bloqueados"
@@ -96,17 +100,20 @@ export default function SegurancaScreen({
         />
       </section>
 
-      <section className="bg-red-50 rounded-2xl p-4 space-y-3">
+      <section className="bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 rounded-2xl p-4 space-y-3">
         <div className="flex items-start gap-3">
-          <span className="text-lg">⚠️</span>
+          <span className="text-lg shrink-0">⚠️</span>
           <div>
-            <p className="font-semibold text-sm text-red-900">Excluir conta</p>
-            <p className="text-xs text-red-700/80 mt-1">
+            <p className="font-semibold text-sm text-red-900 dark:text-red-200">Excluir conta</p>
+            <p className="text-xs text-red-700/80 dark:text-red-300/80 mt-1">
               Sua conta e seu histórico serão removidos. Atendimentos em andamento bloqueiam a exclusão.
             </p>
           </div>
         </div>
-        <button className="w-full bg-white dark:bg-slate-900 text-red-600 font-semibold py-2.5 rounded-xl text-sm border border-red-200 hover:bg-red-100">
+        <button
+          type="button"
+          className="w-full bg-white dark:bg-slate-900 text-red-600 dark:text-red-400 font-semibold py-2.5 rounded-xl text-sm border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors"
+        >
           Solicitar exclusão
         </button>
       </section>
@@ -130,8 +137,9 @@ function Toggle({
 }) {
   return (
     <button
+      type="button"
       onClick={() => onChange(!ativo)}
-      className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-slate-800 dark:bg-slate-800 text-left"
+      className={row}
     >
       <span className="text-lg shrink-0">{icone}</span>
       <div className="flex-1 min-w-0">
@@ -140,11 +148,12 @@ function Toggle({
       </div>
       <span
         className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
-          ativo ? 'bg-purple-700' : 'bg-gray-300'
+          ativo ? 'bg-purple-700 dark:bg-purple-600' : 'bg-gray-300 dark:bg-slate-600'
         }`}
+        aria-hidden
       >
         <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white dark:bg-slate-900 transition-transform ${
+          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
             ativo ? 'translate-x-6' : 'translate-x-1'
           }`}
         />
@@ -165,18 +174,18 @@ function ItemAcao({
   contador?: number
 }) {
   return (
-    <button className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-slate-800 dark:bg-slate-800 text-left">
+    <button type="button" className={row}>
       <span className="text-lg shrink-0">{icone}</span>
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm text-gray-900 dark:text-slate-100">{titulo}</p>
         <p className="text-xs text-gray-500 dark:text-slate-400">{descricao}</p>
       </div>
       {contador !== undefined && (
-        <span className="bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 text-[11px] font-semibold px-2 py-0.5 rounded-full">
+        <span className="bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0">
           {contador}
         </span>
       )}
-      <span className="text-gray-300 text-lg">›</span>
+      <span className="text-gray-300 dark:text-slate-600 text-lg shrink-0">›</span>
     </button>
   )
 }
@@ -218,7 +227,7 @@ function FormularioSenha() {
   }
 
   return (
-    <form onSubmit={enviar} className="space-y-3 pt-2 border-t border-gray-100 dark:border-slate-800">
+    <form onSubmit={enviar} className="space-y-3 pt-3 border-t border-gray-100 dark:border-slate-800">
       <CampoSenha label="Senha atual" valor={atual} onChange={setAtual} />
       <CampoSenha label="Nova senha" valor={nova} onChange={setNova} />
       <CampoSenha label="Confirmar nova senha" valor={confirmar} onChange={setConfirmar} />
@@ -226,7 +235,9 @@ function FormularioSenha() {
       {aviso && (
         <div
           className={`rounded-xl p-2.5 text-xs font-medium ${
-            aviso.tipo === 'ok' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+            aviso.tipo === 'ok'
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300'
+              : 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300'
           }`}
         >
           {aviso.texto}
@@ -236,7 +247,7 @@ function FormularioSenha() {
       <button
         type="submit"
         disabled={salvando}
-        className="w-full bg-purple-700 text-white font-semibold py-2.5 rounded-xl text-sm hover:bg-purple-800 disabled:opacity-50"
+        className="w-full bg-purple-700 dark:bg-purple-600 text-white font-semibold py-2.5 rounded-xl text-sm hover:bg-purple-800 dark:hover:bg-purple-500 disabled:opacity-50 transition-colors"
       >
         {salvando ? 'Atualizando...' : 'Atualizar senha'}
       </button>
@@ -260,7 +271,7 @@ function CampoSenha({
         type="password"
         value={valor}
         onChange={e => onChange(e.target.value)}
-        className="mt-1 w-full bg-gray-50 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:border-purple-600 focus:bg-white dark:bg-slate-900"
+        className="mt-1 w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-purple-600 dark:focus:border-purple-500 focus:bg-white dark:focus:bg-slate-900 transition-colors"
       />
     </label>
   )
