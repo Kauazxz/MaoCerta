@@ -94,15 +94,6 @@ export default function AtendimentoShell({
       {/* Atalhos contextuais do profissional */}
       {perfil === 'profissional' && (
         <section className="grid grid-cols-2 gap-2">
-          {!atendimento.plano && (
-            <button
-              type="button"
-              onClick={() => setModalPlano(true)}
-              className="col-span-2 rounded-xl bg-emerald-700 py-2.5 text-xs font-bold text-white"
-            >
-              + Criar plano
-            </button>
-          )}
           {atendimento.plano && (
             <>
               <button
