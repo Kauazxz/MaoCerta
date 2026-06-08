@@ -40,11 +40,12 @@ type Ticks = {
   pagamentos: number
   wallet: number
   avaliacoes: number
+  denuncias: number
 }
 
 const TICKS_ZERO: Ticks = {
   demandas: 0, propostas: 0, solicitacoes: 0, notificacoes: 0,
-  documentos: 0, etapas: 0, pagamentos: 0, wallet: 0, avaliacoes: 0,
+  documentos: 0, etapas: 0, pagamentos: 0, wallet: 0, avaliacoes: 0, denuncias: 0,
 }
 
 type Toast = {
@@ -258,6 +259,12 @@ export function AppRealtimeProvider({
       () => bump('avaliacoes'),
     )
 
+    // -- Denuncias (admin: painel e contadores)
+    let chDenuncias: ReturnType<typeof supabase.channel> | null = null
+    if (papel === 'administrador') {
+      chDenuncias = bind(`app:denuncias:${userId}`, 'denuncias', undefined, () => bump('denuncias'))
+    }
+
     return () => {
       log('removendo canais')
       subscribedRef.current = false
@@ -268,6 +275,7 @@ export function AppRealtimeProvider({
       void supabase.removeChannel(chDocumentos)
       if (chWallet) void supabase.removeChannel(chWallet)
       void supabase.removeChannel(chAvaliacoes)
+      if (chDenuncias) void supabase.removeChannel(chDenuncias)
     }
   }, [userId, papel, bump, pushToast])
 

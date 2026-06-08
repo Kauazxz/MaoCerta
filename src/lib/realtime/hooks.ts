@@ -82,7 +82,11 @@ export function useDashboardAdminRefresh(refetch: Refetch) {
   useEffect(() => {
     refetch()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ticks.solicitacoes, ticks.documentos, ticks.demandas])
+  }, [ticks.solicitacoes, ticks.documentos, ticks.demandas, ticks.denuncias])
+}
+export function useDenunciasAdmin(refetch: Refetch) {
+  const { ticks } = useAppRealtime()
+  useRefetchOnTick(ticks.denuncias, refetch)
 }
 export function useCarteiraPrestador(_id: string | null, refetch: Refetch) {
   const { ticks } = useAppRealtime()
