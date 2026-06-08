@@ -21,6 +21,9 @@ const ZERO: Contadores = {
   denunciasAbertas: 0, disputasAbertas: 0, atendimentosAtivos: 0, totalAtendimentos: 0,
 }
 
+const card =
+  'bg-white dark:bg-slate-900/80 rounded-2xl border border-gray-100 dark:border-slate-800/50 shadow-sm dark:shadow-none'
+
 export default function AdminInicioScreen() {
   const [c, setC] = useState<Contadores>(ZERO)
   const [carregando, setCarregando] = useState(true)
@@ -52,7 +55,6 @@ export default function AdminInicioScreen() {
 
   useEffect(() => { void load() }, [load])
 
-  // Realtime: qualquer mudanca importante recalcula os contadores
   useDashboardAdminRefresh(() => void load())
 
   return (
@@ -68,7 +70,6 @@ export default function AdminInicioScreen() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 -mt-6 space-y-4 relative z-10">
-        {/* Atalhos de acao */}
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <Atalho
             href="/admin/usuarios"
@@ -111,22 +112,29 @@ export default function AdminInicioScreen() {
           />
         </section>
 
-        {/* Stats secundarias */}
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <CardStat titulo="Atendimentos ativos" valor={c.atendimentosAtivos} />
-          <CardStat titulo="Total de atendimentos" valor={c.totalAtendimentos} />
-          <CardStat titulo="Clientes na plataforma" valor={c.clientes} />
-          <CardStat titulo="Prestadores na plataforma" valor={c.prestadores} />
+        <section className={`${card} p-4`}>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-3">
+            Resumo operacional
+          </p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <CardStat titulo="Atendimentos ativos" valor={c.atendimentosAtivos} carregando={carregando} />
+            <CardStat titulo="Total de atendimentos" valor={c.totalAtendimentos} carregando={carregando} />
+            <CardStat titulo="Clientes na plataforma" valor={c.clientes} carregando={carregando} />
+            <CardStat titulo="Prestadores na plataforma" valor={c.prestadores} carregando={carregando} />
+          </div>
         </section>
 
-        {/* Atalhos auxiliares */}
-        <section className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm divide-y divide-gray-100 dark:divide-slate-800">
-          <ItemMenu href="/admin/financeiro" icone="💰" titulo="Financeiro" descricao="Comissões, escrow, repasses" />
-          <ItemMenu href="/admin/saques" icone="🏦" titulo="Saques de prestadores" descricao="Pagar Pix e debitar saldo" />
-          <ItemMenu href="/admin/diagnostico-pix" icone="🔍" titulo="Diagnostico Pix" descricao="Rastrear pagamentos e webhooks" />
-          <ItemMenu href="/admin/atendimentos/risco" icone="⚠️" titulo="Riscos no chat" descricao="Mensagens suspeitas (pix por fora, etc)" />
-          <ItemMenu href="/admin/categorias" icone="🗂️" titulo="Categorias" descricao="Gerenciar catálogo (em breve)" disabled />
-          <ItemMenu href="/admin/configuracoes" icone="⚙️" titulo="Configurações" descricao="Conta admin e suporte" />
+        <section>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 px-1 mb-2">
+            Ferramentas
+          </p>
+          <div className={`${card} divide-y divide-gray-100 dark:divide-slate-800/80`}>
+            <ItemMenu href="/admin/financeiro" icone="💰" titulo="Financeiro" descricao="Comissões, escrow e repasses" />
+            <ItemMenu href="/admin/saques" icone="🏦" titulo="Saques de prestadores" descricao="Pagar Pix e debitar saldo" />
+            <ItemMenu href="/admin/diagnostico-pix" icone="🔍" titulo="Diagnóstico Pix" descricao="Rastrear pagamentos e webhooks" />
+            <ItemMenu href="/admin/atendimentos/risco" icone="⚠️" titulo="Riscos no chat" descricao="Mensagens suspeitas (pix por fora, etc.)" />
+            <ItemMenu href="/admin/configuracoes" icone="⚙️" titulo="Configurações" descricao="Conta admin e suporte" />
+          </div>
         </section>
       </div>
     </main>
@@ -142,20 +150,24 @@ function Atalho({
   return (
     <Link
       href={href}
-      className={`group relative overflow-hidden rounded-2xl border ${destaque ? 'border-amber-400 dark:border-amber-600' : 'border-gray-100 dark:border-slate-800'} bg-white dark:bg-slate-900 p-4 shadow-sm hover:shadow-md transition-shadow`}
+      className={`group relative overflow-hidden rounded-2xl border ${
+        destaque ? 'border-amber-400 dark:border-amber-600' : 'border-gray-100 dark:border-slate-800/50'
+      } bg-white dark:bg-slate-900/80 p-4 shadow-sm dark:shadow-none hover:shadow-md dark:hover:shadow-none hover:border-gray-200 dark:hover:border-slate-700 transition-all`}
     >
-      <div className={`absolute inset-0 opacity-5 bg-gradient-to-br ${cor}`} />
-      <div className="relative space-y-1">
-        <div className="flex items-start justify-between">
-          <span className="text-2xl">{icone}</span>
+      <div className={`absolute inset-0 opacity-[0.07] dark:opacity-[0.12] bg-gradient-to-br ${cor}`} />
+      <div className="relative space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${cor} flex items-center justify-center text-lg shadow-sm`}>
+            {icone}
+          </div>
           {destaque && (
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-full shrink-0">
               Pendente
             </span>
           )}
         </div>
         <p className="text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">{titulo}</p>
-        <p className="text-3xl font-extrabold text-gray-900 dark:text-slate-100">
+        <p className="text-3xl font-extrabold text-gray-900 dark:text-slate-100 tabular-nums">
           {carregando ? '—' : contador}
         </p>
         <p className="text-[11px] text-gray-500 dark:text-slate-400 leading-relaxed">{descricao}</p>
@@ -164,38 +176,33 @@ function Atalho({
   )
 }
 
-function CardStat({ titulo, valor }: { titulo: string; valor: number }) {
+function CardStat({ titulo, valor, carregando }: { titulo: string; valor: number; carregando?: boolean }) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 px-4 py-3 shadow-sm">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">{titulo}</p>
-      <p className="text-xl font-bold text-gray-900 dark:text-slate-100 mt-1">{valor}</p>
+    <div className="rounded-xl bg-gray-50 dark:bg-slate-950/50 border border-gray-100 dark:border-slate-800/40 px-3 py-2.5">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 leading-tight">{titulo}</p>
+      <p className="text-xl font-bold text-gray-900 dark:text-slate-100 mt-1 tabular-nums">
+        {carregando ? '—' : valor}
+      </p>
     </div>
   )
 }
 
-function ItemMenu({ href, icone, titulo, descricao, disabled = false }: {
-  href: string; icone: string; titulo: string; descricao: string; disabled?: boolean
+function ItemMenu({ href, icone, titulo, descricao }: {
+  href: string; icone: string; titulo: string; descricao: string
 }) {
-  if (disabled) {
-    return (
-      <div className="flex items-center gap-3 p-4 opacity-50 cursor-not-allowed">
-        <span className="text-lg shrink-0">{icone}</span>
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm text-gray-900 dark:text-slate-100">{titulo}</p>
-          <p className="text-xs text-gray-500 dark:text-slate-400">{descricao}</p>
-        </div>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500">em breve</span>
-      </div>
-    )
-  }
   return (
-    <Link href={href} className="flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
-      <span className="text-lg shrink-0">{icone}</span>
+    <Link
+      href={href}
+      className="flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors"
+    >
+      <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-lg shrink-0">
+        {icone}
+      </div>
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm text-gray-900 dark:text-slate-100">{titulo}</p>
         <p className="text-xs text-gray-500 dark:text-slate-400">{descricao}</p>
       </div>
-      <span className="text-gray-300 dark:text-slate-600 text-lg">›</span>
+      <span className="text-gray-300 dark:text-slate-600 text-lg shrink-0">›</span>
     </Link>
   )
 }
