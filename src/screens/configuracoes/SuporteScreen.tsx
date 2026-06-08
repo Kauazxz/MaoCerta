@@ -45,14 +45,15 @@ export default function SuporteScreen({ voltarHref, faq, canais, destaque = DEST
         <p className="text-sm text-white/80">{destaque.descricao}</p>
       </section>
 
-      <section className="bg-white dark:bg-slate-900 rounded-2xl divide-y divide-gray-100">
+      <section className="bg-white dark:bg-slate-900/80 rounded-2xl border border-gray-100 dark:border-slate-800/50 divide-y divide-gray-100 dark:divide-slate-800/80 shadow-sm dark:shadow-none overflow-hidden">
         {faq.map((item, i) => {
           const ativo = aberta === i
           return (
             <div key={item.pergunta}>
               <button
+                type="button"
                 onClick={() => setAberta(ativo ? null : i)}
-                className="w-full flex items-start gap-3 p-4 text-left hover:bg-gray-50 dark:hover:bg-slate-800 dark:bg-slate-800"
+                className="w-full flex items-start gap-3 p-4 text-left hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors"
               >
                 <span className="flex-1 font-semibold text-sm text-gray-900 dark:text-slate-100">{item.pergunta}</span>
                 <span className={`text-gray-400 dark:text-slate-500 text-lg shrink-0 transition-transform ${ativo ? 'rotate-90' : ''}`}>
@@ -70,7 +71,7 @@ export default function SuporteScreen({ voltarHref, faq, canais, destaque = DEST
         {canais.map(canal => (
           <button
             key={canal.titulo}
-            className="w-full flex items-center gap-4 bg-white dark:bg-slate-900 rounded-2xl p-4 hover:bg-gray-50 dark:hover:bg-slate-800"
+            className="w-full flex items-center gap-4 bg-white dark:bg-slate-900/80 rounded-2xl border border-gray-100 dark:border-slate-800/50 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors shadow-sm dark:shadow-none"
           >
             <span className="text-xl shrink-0">{canal.icone}</span>
             <div className="flex-1 text-left">

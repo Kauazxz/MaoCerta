@@ -242,7 +242,7 @@ export default function ContaProfissionalScreen() {
   }, [form, avatarUrl])
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white pb-10">
+    <main className="min-h-screen pb-10">
       <CabecalhoAjuste titulo="Conta" subtitulo="Edite seus dados pessoais e profissionais" voltarHref="/profissional/configuracoes" tema="prestador" />
       <div className="max-w-lg mx-auto px-4 -mt-6 space-y-4 relative z-10">
       <section className="rounded-2xl bg-gradient-to-r from-emerald-700 to-teal-600 text-white p-4 shadow-lg border border-emerald-600/30">
@@ -264,7 +264,7 @@ export default function ContaProfissionalScreen() {
         </div>
       </section>
 
-      <section className="bg-white dark:bg-slate-900 rounded-2xl p-5 flex flex-col items-center gap-3 shadow-sm border border-gray-100 dark:border-slate-800">
+      <section className="bg-white dark:bg-slate-900/80 rounded-2xl p-5 flex flex-col items-center gap-3 shadow-sm dark:shadow-none border border-gray-100 dark:border-slate-800/50">
         <div className="relative">
           <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-600 to-teal-500 text-white text-2xl font-bold flex items-center justify-center overflow-hidden">
             {avatarUrl ? (
@@ -320,7 +320,7 @@ export default function ContaProfissionalScreen() {
       </section>
 
       <form onSubmit={salvar} className="space-y-4">
-        <section className="bg-white dark:bg-slate-900 rounded-2xl p-5 space-y-4">
+        <section className="bg-white dark:bg-slate-900/80 rounded-2xl p-5 space-y-4 shadow-sm dark:shadow-none border border-gray-100 dark:border-slate-800/50">
           <h2 className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Dados pessoais</h2>
           <Campo
             label="Nome completo"
@@ -348,7 +348,7 @@ export default function ContaProfissionalScreen() {
           />
         </section>
 
-        <section className="bg-white dark:bg-slate-900 rounded-2xl p-5 space-y-4">
+        <section className="bg-white dark:bg-slate-900/80 rounded-2xl p-5 space-y-4 shadow-sm dark:shadow-none border border-gray-100 dark:border-slate-800/50">
           <div>
             <h2 className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Apresentação profissional</h2>
             <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1">Esse texto aparece no seu perfil para os clientes que te encontrarem.</p>

@@ -13,10 +13,10 @@ type Props = {
 }
 
 const card =
-  'bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden'
+  'bg-white dark:bg-slate-900/80 rounded-2xl border border-gray-100 dark:border-slate-800/50 shadow-sm dark:shadow-none overflow-hidden'
 
 const row =
-  'w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/70 text-left transition-colors'
+  'w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 text-left transition-colors'
 
 export default function SegurancaScreen({
   voltarHref,
@@ -35,7 +35,7 @@ export default function SegurancaScreen({
       <CabecalhoAjuste titulo="Privacidade e Segurança" subtitulo="Proteja sua conta e seus dados" voltarHref={voltarHref} tema={tema} />
       <div className="max-w-lg mx-auto px-4 -mt-6 space-y-4 relative z-10">
 
-      <section className={`${card} divide-y divide-gray-100 dark:divide-slate-800`}>
+      <section className={`${card} divide-y divide-gray-100 dark:divide-slate-800/80`}>
         <Toggle
           icone="🔐"
           titulo="Autenticação em 2 fatores"
@@ -59,10 +59,8 @@ export default function SegurancaScreen({
             onChange={setPerfilPublico}
           />
         )}
-      </section>
-
-      <section className={card}>
         <button
+          type="button"
           onClick={() => setMostrarTrocaSenha(v => !v)}
           className={row}
         >
@@ -74,13 +72,10 @@ export default function SegurancaScreen({
           <span className={`text-gray-300 dark:text-slate-600 text-lg shrink-0 transition-transform ${mostrarTrocaSenha ? 'rotate-90' : ''}`}>›</span>
         </button>
         {mostrarTrocaSenha && (
-          <div className="px-4 pb-4">
+          <div className="px-4 pb-4 bg-gray-50/50 dark:bg-slate-950/40">
             <FormularioSenha />
           </div>
         )}
-      </section>
-
-      <section className={`${card} divide-y divide-gray-100 dark:divide-slate-800`}>
         <ItemAcao
           icone="🚫"
           titulo="Usuários bloqueados"
@@ -100,7 +95,7 @@ export default function SegurancaScreen({
         />
       </section>
 
-      <section className="bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 rounded-2xl p-4 space-y-3">
+      <section className="rounded-2xl p-4 space-y-3 border border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-slate-900">
         <div className="flex items-start gap-3">
           <span className="text-lg shrink-0">⚠️</span>
           <div>
@@ -112,7 +107,7 @@ export default function SegurancaScreen({
         </div>
         <button
           type="button"
-          className="w-full bg-white dark:bg-slate-900 text-red-600 dark:text-red-400 font-semibold py-2.5 rounded-xl text-sm border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors"
+          className="w-full bg-white dark:bg-slate-800 text-red-600 dark:text-red-400 font-semibold py-2.5 rounded-xl text-sm border border-red-200 dark:border-red-800/60 hover:bg-red-100 dark:hover:bg-slate-700 transition-colors"
         >
           Solicitar exclusão
         </button>
