@@ -29,7 +29,7 @@ const FAQ = [
 ]
 
 const CANAIS = [
-  { icone: '💼', titulo: 'Equipe interna', descricao: 'Slack #admin-suporte', acao: 'Abrir Slack' },
+  { icone: '💬', titulo: 'Chat com usuários', descricao: 'Responda clientes e prestadores em tempo real', acao: 'Abrir chat' },
   { icone: '✉️', titulo: 'E-mail interno', descricao: 'admin@maocerta.com', acao: 'Enviar e-mail' },
   { icone: '🔐', titulo: 'Líder técnico', descricao: 'Para incidentes críticos de segurança', acao: 'Acionar' },
 ]
@@ -41,6 +41,7 @@ export default function SuportePage() {
       faq={FAQ}
       canais={CANAIS}
       tema="admin"
+      chatSuporte="admin"
       destaque={{
         titulo: 'Procedimentos internos',
         descricao: 'Fluxos padrão de moderação, suspensão e tratamento de incidentes.',

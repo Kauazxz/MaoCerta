@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from 'react'
 import CabecalhoAjuste from './CabecalhoAjuste'
+import { AdminSuporteChat, UsuarioSuporteChat } from '@/components/suporte/SuporteChat'
 
 export type Pergunta = {
   pergunta: string
@@ -19,6 +20,7 @@ type Props = {
   voltarHref: string
   faq: Pergunta[]
   canais: Canal[]
+  chatSuporte?: 'usuario' | 'admin'
   destaque?: {
     titulo: string
     descricao: string
@@ -31,8 +33,16 @@ const DESTAQUE_PADRAO = {
   descricao: 'Antes de abrir um chamado, dê uma olhada nas dúvidas mais comuns abaixo.',
 }
 
-export default function SuporteScreen({ voltarHref, faq, canais, destaque = DESTAQUE_PADRAO, tema = 'cliente' }: Props) {
+export default function SuporteScreen({
+  voltarHref,
+  faq,
+  canais,
+  chatSuporte,
+  destaque = DESTAQUE_PADRAO,
+  tema = 'cliente',
+}: Props) {
   const [aberta, setAberta] = useState<number | null>(0)
+  const [chatAberto, setChatAberto] = useState(false)
 
   return (
     <main className="min-h-screen pb-10">
@@ -71,6 +81,12 @@ export default function SuporteScreen({ voltarHref, faq, canais, destaque = DEST
         {canais.map(canal => (
           <button
             key={canal.titulo}
+            type="button"
+            onClick={() => {
+              if (/chat/i.test(canal.titulo) || /chat/i.test(canal.acao)) {
+                setChatAberto(true)
+              }
+            }}
             className="w-full flex items-center gap-4 bg-white dark:bg-slate-900/80 rounded-2xl border border-gray-100 dark:border-slate-800/50 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors shadow-sm dark:shadow-none"
           >
             <span className="text-xl shrink-0">{canal.icone}</span>
@@ -82,6 +98,8 @@ export default function SuporteScreen({ voltarHref, faq, canais, destaque = DEST
           </button>
         ))}
       </section>
+
+      {chatAberto && (chatSuporte === 'admin' ? <AdminSuporteChat /> : <UsuarioSuporteChat />)}
 
       <FormularioMensagem />
 

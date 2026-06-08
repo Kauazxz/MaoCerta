@@ -35,5 +35,5 @@ const CANAIS = [
 ]
 
 export default function SuportePage() {
-  return <SuporteScreen voltarHref="/cliente/configuracoes" faq={FAQ} canais={CANAIS} tema="cliente" />
+  return <SuporteScreen voltarHref="/cliente/configuracoes" faq={FAQ} canais={CANAIS} tema="cliente" chatSuporte="usuario" />
 }

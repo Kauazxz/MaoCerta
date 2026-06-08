@@ -46,6 +46,7 @@ export default function SuportePage() {
       faq={FAQ}
       canais={CANAIS}
       tema="prestador"
+      chatSuporte="usuario"
       destaque={{
         titulo: 'Suporte ao prestador',
         descricao: 'Tire dúvidas sobre repasse, disputas e visibilidade. As perguntas mais comuns estão abaixo.',
