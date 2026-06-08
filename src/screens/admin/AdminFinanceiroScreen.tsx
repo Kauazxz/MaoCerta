@@ -153,48 +153,27 @@ export default function AdminFinanceiroScreen() {
     setCarregando(true)
     setMsg(null)
     try {
-      const supabase = createClient()
-      const [dRes, pRes, ppRes, wtRes] = await Promise.all([
-        supabase.from('disputas').select('*').order('created_at', { ascending: false }).limit(60),
-        supabase
-          .from('pagamentos')
-          .select(`
-            id, solicitacao_id, etapa_id, cliente_id, profissional_id,
-            valor_bruto, valor_comissao, valor_liquido_prestador,
-            status, metodo, mp_payment_id, pix_txid, created_at, pago_em, liberado_em,
-            cliente:cliente_id ( id, nome, email, avatar_url, tipo, plano ),
-            profissional:profissional_id ( id, nome, email, avatar_url, tipo, plano )
-          `)
-          .order('created_at', { ascending: false })
-          .limit(80),
-        supabase
-          .from('pagamentos_plano')
-          .select(`
-            id, user_id, plano_alvo, valor, status, mp_payment_id, created_at, pago_em,
-            user:user_id ( id, nome, email, avatar_url, tipo, plano )
-          `)
-          .order('created_at', { ascending: false })
-          .limit(80),
-        supabase
-          .from('wallet_transactions')
-          .select(`
-            id, user_id, tipo, valor, descricao, referencia, created_at,
-            user:user_id ( id, nome, email, avatar_url, tipo, plano )
-          `)
-          .order('created_at', { ascending: false })
-          .limit(80),
-      ])
-      if (dRes.error) throw dRes.error
-      if (pRes.error) throw pRes.error
-      if (ppRes.error) throw ppRes.error
-      if (wtRes.error) throw wtRes.error
-      setDisputas((dRes.data as DisputaRow[]) || [])
-      setPagamentos((pRes.data as unknown as PagamentoServico[]) || [])
-      setPlanos((ppRes.data as unknown as PagamentoPlano[]) || [])
-      setWalletTx((wtRes.data as unknown as WalletTx[]) || [])
+      const res = await fetch('/api/admin/financeiro', { cache: 'no-store' })
+      const json = (await res.json().catch(() => null)) as {
+        ok?: boolean
+        erro?: string
+        pagamentos?: PagamentoServico[]
+        planos?: PagamentoPlano[]
+        wallet?: WalletTx[]
+        disputas?: DisputaRow[]
+      } | null
+
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.erro || 'Erro ao carregar financeiro')
+      }
+
+      setDisputas(json.disputas || [])
+      setPagamentos(json.pagamentos || [])
+      setPlanos(json.planos || [])
+      setWalletTx(json.wallet || [])
     } catch (e) {
       console.error(e)
-      setMsg('Sem permissão ou erro ao carregar dados financeiros. Verifique se a migration de RLS admin foi aplicada.')
+      setMsg(e instanceof Error ? e.message : 'Erro ao carregar dados financeiros.')
     } finally {
       setCarregando(false)
     }
@@ -212,6 +191,7 @@ export default function AdminFinanceiroScreen() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pagamentos_plano' }, () => void carregar())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'wallet_transactions' }, () => void carregar())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'disputas' }, () => void carregar())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cobrancas_atendimento' }, () => void carregar())
       .subscribe()
 
     return () => {
@@ -293,12 +273,6 @@ export default function AdminFinanceiroScreen() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 -mt-7 space-y-4 relative z-10">
-        {msg && (
-          <p className="text-sm rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 px-4 py-3 text-amber-900 dark:text-amber-100">
-            {msg}
-          </p>
-        )}
-
         <section className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <ResumoCard titulo="Serviços pagos" valor={resumo.brutoServicos} carregando={carregando} />
           <ResumoCard titulo="Comissões" valor={resumo.comissoes} carregando={carregando} destaque />
@@ -306,6 +280,12 @@ export default function AdminFinanceiroScreen() {
           <ResumoCard titulo="Carteira líquida" valor={resumo.carteiraLiquida} carregando={carregando} />
           <ResumoCard titulo="Disputas abertas" valorTexto={String(resumo.disputasAbertas)} carregando={carregando} alerta={resumo.disputasAbertas > 0} />
         </section>
+
+        {msg && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 px-4 py-3 text-sm text-amber-900 dark:text-amber-100 leading-relaxed break-words">
+            {msg}
+          </div>
+        )}
 
         <section className={`${card} p-4 space-y-3`}>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

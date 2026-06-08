@@ -23,6 +23,10 @@ drop policy if exists "wallets_select_admin" on public.wallets;
 create policy "wallets_select_admin" on public.wallets
   for select to authenticated using ((select public.is_administrator()));
 
+drop policy if exists "cobrancas_atendimento_select_admin" on public.cobrancas_atendimento;
+create policy "cobrancas_atendimento_select_admin" on public.cobrancas_atendimento
+  for select to authenticated using ((select public.is_administrator()));
+
 drop policy if exists "disputas_select_admin" on public.disputas;
 create policy "disputas_select_admin" on public.disputas
   for select to authenticated using ((select public.is_administrator()));
@@ -63,6 +67,12 @@ begin
   end;
 
   begin
+    execute 'alter table public.cobrancas_atendimento replica identity full';
+  exception when others then
+    raise notice 'replica identity cobrancas_atendimento: %', sqlerrm;
+  end;
+
+  begin
     alter publication supabase_realtime add table public.pagamentos;
   exception when duplicate_object then null;
   end;
@@ -79,6 +89,11 @@ begin
 
   begin
     alter publication supabase_realtime add table public.disputas;
+  exception when duplicate_object then null;
+  end;
+
+  begin
+    alter publication supabase_realtime add table public.cobrancas_atendimento;
   exception when duplicate_object then null;
   end;
 end $$;
