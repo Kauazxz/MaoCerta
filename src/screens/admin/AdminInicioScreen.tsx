@@ -11,14 +11,13 @@ type Contadores = {
   clientes: number
   validacoesPendentes: number
   denunciasAbertas: number
-  disputasAbertas: number
   atendimentosAtivos: number
   totalAtendimentos: number
 }
 
 const ZERO: Contadores = {
   usuarios: 0, prestadores: 0, clientes: 0, validacoesPendentes: 0,
-  denunciasAbertas: 0, disputasAbertas: 0, atendimentosAtivos: 0, totalAtendimentos: 0,
+  denunciasAbertas: 0, atendimentosAtivos: 0, totalAtendimentos: 0,
 }
 
 const card =
@@ -30,13 +29,12 @@ export default function AdminInicioScreen() {
 
   const load = useCallback(async () => {
     const sb = createClient()
-    const [usu, prest, cli, validPend, denAbertas, dispAbertas, atendAtivos, totalAtend] = await Promise.all([
+    const [usu, prest, cli, validPend, denAbertas, atendAtivos, totalAtend] = await Promise.all([
       sb.from('profiles').select('id', { count: 'exact', head: true }),
       sb.from('profiles').select('id', { count: 'exact', head: true }).eq('tipo', 'profissional'),
       sb.from('profiles').select('id', { count: 'exact', head: true }).eq('tipo', 'cliente'),
       sb.from('documentos_validacao').select('id', { count: 'exact', head: true }).in('status', ['pendente', 'em_analise']),
       sb.from('denuncias').select('id', { count: 'exact', head: true }).in('status', ['aberta', 'em_analise']),
-      sb.from('disputas').select('id', { count: 'exact', head: true }).in('status', ['aberta', 'em_analise']),
       sb.from('solicitacoes').select('id', { count: 'exact', head: true }).in('status', ['aceita', 'em_andamento']),
       sb.from('solicitacoes').select('id', { count: 'exact', head: true }),
     ])
@@ -46,7 +44,6 @@ export default function AdminInicioScreen() {
       clientes: cli.count ?? 0,
       validacoesPendentes: validPend.count ?? 0,
       denunciasAbertas: denAbertas.count ?? 0,
-      disputasAbertas: dispAbertas.count ?? 0,
       atendimentosAtivos: atendAtivos.count ?? 0,
       totalAtendimentos: totalAtend.count ?? 0,
     })
@@ -64,13 +61,13 @@ export default function AdminInicioScreen() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">Painel administrativo</p>
           <h1 className="text-2xl font-bold">MaoCerta · Admin</h1>
           <p className="text-sm text-white/85 leading-relaxed max-w-lg">
-            Controle de usuários, validações, denúncias, disputas e configuração da plataforma.
+            Controle de usuários, validações, denúncias e configuração da plataforma.
           </p>
         </div>
       </header>
 
       <div className="max-w-6xl mx-auto px-4 -mt-6 space-y-4 relative z-10">
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <section className="grid grid-cols-2 lg:grid-cols-3 gap-3">
           <Atalho
             href="/admin/usuarios"
             icone="👥"
@@ -98,16 +95,6 @@ export default function AdminInicioScreen() {
             descricao={c.denunciasAbertas === 0 ? 'Tudo em ordem' : 'Aberta(s) ou em análise'}
             cor="from-red-600 to-pink-600"
             destaque={c.denunciasAbertas > 0}
-            carregando={carregando}
-          />
-          <Atalho
-            href="/admin/disputas"
-            icone="⚖️"
-            titulo="Disputas"
-            contador={c.disputasAbertas}
-            descricao={c.disputasAbertas === 0 ? 'Sem disputas ativas' : 'Disputa(s) financeira(s)'}
-            cor="from-amber-600 to-orange-600"
-            destaque={c.disputasAbertas > 0}
             carregando={carregando}
           />
         </section>
