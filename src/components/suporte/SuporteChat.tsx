@@ -152,7 +152,7 @@ function ChatBox({
   }
 
   return (
-    <section className="bg-white dark:bg-slate-900/80 rounded-2xl border border-gray-100 dark:border-slate-800/50 shadow-sm dark:shadow-none overflow-hidden">
+    <section className="bg-white dark:bg-slate-900/80 rounded-2xl border border-gray-100 dark:border-slate-800/50 shadow-sm dark:shadow-none overflow-hidden flex flex-col min-h-[70dvh]">
       <header className="flex items-center gap-3 p-4 border-b border-gray-100 dark:border-slate-800">
         <Avatar perfil={outro} />
         <div className="min-w-0">
@@ -161,7 +161,7 @@ function ChatBox({
         </div>
       </header>
 
-      <div className="h-[360px] overflow-y-auto px-3 py-4 space-y-2 bg-gray-50/70 dark:bg-slate-950/40">
+      <div className="flex-1 min-h-[22rem] overflow-y-auto px-3 py-4 space-y-2 bg-gray-50/70 dark:bg-slate-950/40">
         {carregando && (
           <p className="text-center text-xs text-gray-400 dark:text-slate-500 py-8">Carregando conversa...</p>
         )}
@@ -404,8 +404,8 @@ export function AdminSuporteChat() {
   }
 
   return (
-    <section className="grid lg:grid-cols-[18rem,1fr] gap-3">
-      <aside className="bg-white dark:bg-slate-900/80 rounded-2xl border border-gray-100 dark:border-slate-800/50 shadow-sm dark:shadow-none overflow-hidden">
+    <section className="grid lg:grid-cols-[18rem,1fr] gap-3 min-h-[70dvh]">
+      <aside className="bg-white dark:bg-slate-900/80 rounded-2xl border border-gray-100 dark:border-slate-800/50 shadow-sm dark:shadow-none overflow-hidden max-h-[22rem] lg:max-h-none lg:h-[70dvh] overflow-y-auto">
         <div className="p-4 border-b border-gray-100 dark:border-slate-800">
           <h2 className="text-sm font-bold text-gray-900 dark:text-slate-100 uppercase tracking-wide">Chats de suporte</h2>
           <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{conversas.length} conversa(s)</p>

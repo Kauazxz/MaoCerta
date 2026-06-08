@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, FormEvent } from 'react'
+import { useEffect, useState, FormEvent } from 'react'
 import CabecalhoAjuste from './CabecalhoAjuste'
 import { AdminSuporteChat, UsuarioSuporteChat } from '@/components/suporte/SuporteChat'
 
@@ -42,7 +42,23 @@ export default function SuporteScreen({
   tema = 'cliente',
 }: Props) {
   const [aberta, setAberta] = useState<number | null>(0)
-  const [chatAberto, setChatAberto] = useState(chatSuporte === 'admin')
+  const [chatAberto, setChatAberto] = useState(false)
+
+  useEffect(() => {
+    if (!chatAberto) return
+    const original = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setChatAberto(false)
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = original
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [chatAberto])
 
   return (
     <main className="min-h-screen pb-10">
@@ -99,7 +115,42 @@ export default function SuporteScreen({
         ))}
       </section>
 
-      {chatAberto && (chatSuporte === 'admin' ? <AdminSuporteChat /> : <UsuarioSuporteChat />)}
+      {chatAberto && (
+        <div
+          className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center bg-slate-950/70 backdrop-blur-md p-0 sm:p-4"
+          onClick={() => setChatAberto(false)}
+        >
+          <section
+            className="w-full sm:max-w-5xl max-h-[94dvh] sm:max-h-[88dvh] bg-white dark:bg-slate-950 rounded-t-3xl sm:rounded-3xl border border-white/10 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Chat de suporte"
+          >
+            <header className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-sm">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-purple-600 dark:text-purple-300">
+                  Suporte MaoCerta
+                </p>
+                <h2 className="text-base font-bold text-gray-900 dark:text-slate-100 truncate">
+                  {chatSuporte === 'admin' ? 'Conversas com usuários' : 'Chat com a equipe'}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setChatAberto(false)}
+                className="shrink-0 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700 px-3 py-1.5 text-sm font-bold"
+                aria-label="Fechar chat de suporte"
+              >
+                Fechar
+              </button>
+            </header>
+            <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4 bg-gray-50 dark:bg-slate-950">
+              {chatSuporte === 'admin' ? <AdminSuporteChat /> : <UsuarioSuporteChat />}
+            </div>
+          </section>
+        </div>
+      )}
 
       <FormularioMensagem />
 
