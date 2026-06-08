@@ -42,7 +42,7 @@ export default function SuporteScreen({
   tema = 'cliente',
 }: Props) {
   const [aberta, setAberta] = useState<number | null>(0)
-  const [chatAberto, setChatAberto] = useState(false)
+  const [chatAberto, setChatAberto] = useState(chatSuporte === 'admin')
 
   return (
     <main className="min-h-screen pb-10">

@@ -328,9 +328,10 @@ export function AdminSuporteChat() {
   const [selecionadaId, setSelecionadaId] = useState<string | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
+  const jaCarregouRef = useRef(false)
 
   const carregar = useCallback(async () => {
-    setCarregando(true)
+    if (!jaCarregouRef.current) setCarregando(true)
     setErro(null)
     const supabase = createClient()
     const { data: auth } = await supabase.auth.getUser()
@@ -360,6 +361,7 @@ export function AdminSuporteChat() {
       setConversas(rows)
       setSelecionadaId((atual) => atual || rows[0]?.id || null)
     }
+    jaCarregouRef.current = true
     setCarregando(false)
   }, [])
 
