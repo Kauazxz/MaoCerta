@@ -5,7 +5,6 @@ import { createServiceRoleClient } from '@/lib/supabase/admin'
 type PerfilResumo = {
   id: string
   nome: string | null
-  email: string | null
   avatar_url: string | null
   tipo: string | null
   plano: string | null
@@ -107,7 +106,7 @@ export async function GET() {
   if (ids.size > 0) {
     const { data: perfis, error: perfisError } = await admin
       .from('profiles')
-      .select('id, nome, email, avatar_url, tipo, plano')
+      .select('id, nome, avatar_url, tipo, plano')
       .in('id', Array.from(ids))
 
     if (perfisError) {

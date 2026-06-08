@@ -10,7 +10,6 @@ import { labelStatusPagamento } from '@/lib/financeiro/status-pagamento'
 type PerfilResumo = {
   id: string
   nome: string | null
-  email: string | null
   avatar_url: string | null
   tipo: string | null
   plano: string | null
@@ -115,7 +114,7 @@ function PerfilLinha({ perfil, rotulo }: { perfil: PerfilResumo | null; rotulo: 
         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{rotulo}</p>
         <p className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">{perfil?.nome || 'Usuário não encontrado'}</p>
         <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-          {[perfil?.email, perfil?.tipo, nomePlano(perfil?.plano)].filter(Boolean).join(' · ')}
+          {[perfil?.tipo, nomePlano(perfil?.plano)].filter(Boolean).join(' · ')}
         </p>
       </div>
     </div>
